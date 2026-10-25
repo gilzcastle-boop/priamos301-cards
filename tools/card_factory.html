@@ -1,0 +1,1353 @@
+<title>카드뉴스 자동공장</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;800;900&family=Hahmlet:wght@500;700;900&family=Yellowtail&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: a newsroom copy desk. Left column is the desk (inputs, in the order a card is made), right column is the press proof (the live card). */
+:root{
+  --paper:#EEF1F6;
+  --sheet:#FFFFFF;
+  --ink:#131A2A;
+  --ink-2:#4D586E;
+  --rule:#D3D9E4;
+  --marker:#FFD400;
+  --on-marker:#131A2A;
+  --link:#1D4ED8;
+  --ok:#11734B; --ok-bg:#DDF3E8;
+  --bad:#B42318; --bad-bg:#FDE4E1;
+  --warn:#9A5B00; --warn-bg:#FFF1CC;
+  --unk:#4D586E; --unk-bg:#E6EAF1;
+  --shadow:0 1px 2px rgba(19,26,42,.06),0 8px 24px rgba(19,26,42,.06);
+  --f-display:"Black Han Sans","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-body:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E121A; --sheet:#161C28; --ink:#E7ECF4; --ink-2:#A2ADC1; --rule:#2A3346;
+    --marker:#FFD400; --on-marker:#131A2A; --link:#93B4FF;
+    --ok:#5FD4A0; --ok-bg:#12322A; --bad:#FF8A7E; --bad-bg:#3A1A18;
+    --warn:#FFC24D; --warn-bg:#3A2C0C; --unk:#A2ADC1; --unk-bg:#232B3B;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E121A; --sheet:#161C28; --ink:#E7ECF4; --ink-2:#A2ADC1; --rule:#2A3346;
+  --marker:#FFD400; --on-marker:#131A2A; --link:#93B4FF;
+  --ok:#5FD4A0; --ok-bg:#12322A; --bad:#FF8A7E; --bad-bg:#3A1A18;
+  --warn:#FFC24D; --warn-bg:#3A2C0C; --unk:#A2ADC1; --unk-bg:#232B3B;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.65;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--paper)}
+a{color:var(--link)}
+h1,h2,h3{text-wrap:balance;margin:0}
+.wrap{max-width:1240px;margin:0 auto}
+.mast{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;padding-block:28px 14px;border-bottom:3px solid var(--ink)}
+.mast h1{font-family:var(--f-display);font-weight:400;font-size:clamp(30px,6vw,46px);line-height:1.05;letter-spacing:-.01em}
+.mast h1 mark{background:linear-gradient(transparent 55%,var(--marker) 55%);color:inherit;padding:0 .08em}
+.mast p{margin:6px 0 0;color:var(--ink-2);max-width:62ch}
+.mast .src{font-family:var(--f-mono);font-size:12px;color:var(--ink-2);text-align:right}
+.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--paper);display:flex;gap:4px;overflow-x:auto;padding-block:10px;border-bottom:1px solid var(--rule);margin-bottom:22px}
+.tabs button{appearance:none;border:0;background:transparent;color:var(--ink-2);font:700 15px var(--f-body);padding:8px 14px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--paper)}
+.tabs button:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid var(--marker);outline-offset:2px}
+
+/* make tab grid */
+.make{display:grid;gap:18px;grid-template-columns:minmax(0,1fr);grid-template-areas:"s1" "s2" "pv" "s3" "ob" "q"}
+@media (min-width:980px){.make{grid-template-columns:minmax(0,1fr) 430px;grid-template-areas:"s1 pv" "s2 pv" "s3 pv" "ob ob" "q q";column-gap:28px}}
+.s1{grid-area:s1}.s2{grid-area:s2}.s3{grid-area:s3}.obsec{grid-area:ob}.qsec{grid-area:q}
+.pv{grid-area:pv;align-self:start}
+@media (min-width:980px){.pv{position:sticky;top:calc(env(safe-area-inset-top,0px) + 70px)}}
+.panel{background:var(--sheet);border:1px solid var(--rule);border-radius:14px;padding:18px;box-shadow:var(--shadow);min-width:0}
+.panel>h2{display:flex;align-items:baseline;gap:10px;font-size:18px;font-weight:900;margin-bottom:12px}
+.step{font-family:var(--f-mono);font-size:12px;font-weight:600;background:var(--marker);color:var(--on-marker);border-radius:6px;padding:1px 7px;letter-spacing:.04em}
+.hint{color:var(--ink-2);font-size:13px;margin:4px 0 0}
+label.f{display:block;font-weight:700;font-size:13px;margin:12px 0 5px;letter-spacing:.01em}
+input[type=text],input[type=url],input[type=number],input[type=time],textarea,select{width:100%;font:15px/1.5 var(--f-body);color:var(--ink);background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:10px 12px}
+textarea{resize:vertical}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (max-width:520px){.row2{grid-template-columns:minmax(0,1fr)}}
+.btn{appearance:none;border:1px solid var(--ink);background:var(--ink);color:var(--paper);font:700 15px var(--f-body);padding:10px 16px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;line-height:1.2}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.mark{background:var(--marker);border-color:var(--marker);color:var(--on-marker)}
+.btn.sm{font-size:13px;padding:6px 10px;border-radius:8px}
+.btn[disabled]{opacity:.5;cursor:default}
+.chip{appearance:none;border:1px solid var(--rule);background:var(--paper);color:var(--ink);font:500 13px var(--f-body);padding:4px 10px;border-radius:999px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.status{font-size:14px;margin-top:10px;min-height:1.4em;color:var(--ink-2)}
+.status.err{color:var(--bad)}
+.status.good{color:var(--ok)}
+details.alt{margin-top:14px;border-top:1px dashed var(--rule);padding-top:10px}
+details.alt summary{cursor:pointer;font-weight:700;font-size:14px}
+.checks{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:6px}
+.checks li{display:flex;gap:8px;align-items:flex-start;font-size:14px;line-height:1.5}
+.pill{flex:none;font:700 11px/1 var(--f-body);padding:4px 7px;border-radius:999px;letter-spacing:.02em;margin-top:2px}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.bad{background:var(--bad-bg);color:var(--bad)}
+.pill.unk{background:var(--unk-bg);color:var(--unk)}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:10px;overflow:hidden;flex-wrap:wrap}
+.seg button{appearance:none;border:0;background:var(--paper);color:var(--ink);font:600 13px var(--f-body);padding:8px 12px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+input[type=range]{width:100%;accent-color:var(--ink)}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}
+.swatches button{width:34px;height:34px;border-radius:50%;border:2px solid var(--rule);cursor:pointer}
+.swatches button[aria-pressed="true"]{outline:3px solid var(--marker);outline-offset:2px}
+.canvasbox{position:relative;border-radius:10px;overflow:hidden;background:#000;touch-action:none}
+.canvasbox canvas{display:block;width:100%;height:auto;cursor:grab}
+.canvasbox.drag{outline:3px dashed var(--marker)}
+.pv .acts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+.pv .acts .btn{justify-content:center}
+.pv .acts .wide{grid-column:1/-1}
+.fallimg{margin-top:12px;text-align:center}
+.fallimg img{border-radius:8px;border:1px solid var(--rule)}
+.mini{font-size:12.5px;color:var(--ink-2);margin:10px 0 0;padding-left:18px}
+.mini li{margin:2px 0}
+#copyFallback{margin-top:8px;font-size:13px}
+
+/* queue */
+.qhead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px}
+.qlist{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.qitem{display:grid;grid-template-columns:72px minmax(0,1fr);gap:10px;border:1px solid var(--rule);border-radius:12px;padding:10px;background:var(--paper)}
+.qitem img{width:72px;border-radius:6px;display:block}
+.qitem .t{font-weight:700;font-size:14px;line-height:1.35;overflow-wrap:anywhere}
+.qitem .r{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+.qitem input[type=time]{width:auto;padding:4px 8px;font-family:var(--f-mono);font-size:13px}
+.qitem.done{opacity:.6}
+.qitem.done .t{text-decoration:line-through}
+.empty{color:var(--ink-2);font-size:14px;border:1px dashed var(--rule);border-radius:12px;padding:16px;margin-top:12px}
+
+/* reading tabs */
+.read{max-width:880px}
+.read section{margin-bottom:34px}
+.read h2{font-family:var(--f-display);font-weight:400;font-size:26px;line-height:1.2;margin-bottom:10px}
+.read h3{font-size:17px;font-weight:900;margin:18px 0 6px}
+.read p,.read li{max-width:68ch}
+.lede{font-size:16.5px}
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:14px 0;padding:0;list-style:none;counter-reset:f}
+.flow li{counter-increment:f;background:var(--sheet);border:1px solid var(--rule);border-radius:12px;padding:12px;font-weight:700;font-size:14px;line-height:1.4}
+.flow li::before{content:counter(f);display:inline-block;font-family:var(--f-mono);font-size:12px;background:var(--marker);color:var(--on-marker);border-radius:5px;padding:0 6px;margin-right:6px}
+.flow li small{display:block;font-weight:400;color:var(--ink-2);margin-top:4px}
+ol.steps{list-style:none;padding:0;margin:0;counter-reset:s;display:grid;gap:12px}
+ol.steps>li{counter-increment:s;background:var(--sheet);border:1px solid var(--rule);border-radius:14px;padding:14px 16px 14px 56px;position:relative;max-width:none}
+ol.steps>li::before{content:counter(s);position:absolute;left:14px;top:14px;width:30px;height:30px;border-radius:8px;background:var(--ink);color:var(--paper);font:600 14px/30px var(--f-mono);text-align:center}
+ol.steps h3{margin:2px 0 4px;font-size:16px}
+ol.steps p{margin:4px 0}
+ol.steps ul{margin:4px 0;padding-left:18px}
+.ts{font-family:var(--f-mono);font-size:12px;font-weight:600;text-decoration:none;background:var(--unk-bg);color:var(--ink);padding:1px 7px;border-radius:6px;white-space:nowrap}
+.ts:hover{background:var(--marker);color:var(--on-marker)}
+.note{border-left:4px solid var(--marker);background:var(--sheet);padding:10px 14px;border-radius:0 10px 10px 0;margin:12px 0;font-size:14.5px}
+.note.warn{border-left-color:var(--bad)}
+.note b{font-weight:900}
+.op{font-size:12px;font-weight:700;color:var(--warn);background:var(--warn-bg);padding:1px 6px;border-radius:5px;white-space:nowrap}
+.uc{font-size:12px;font-weight:700;color:var(--unk);background:var(--unk-bg);padding:1px 6px;border-radius:5px;white-space:nowrap}
+.calc{background:var(--sheet);border:1px solid var(--rule);border-radius:14px;padding:16px}
+.calc .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:600px){.calc .grid{grid-template-columns:minmax(0,1fr)}}
+.calc output{display:block;margin-top:12px;font-size:15px}
+.calc .big{font-family:var(--f-mono);font-size:24px;font-weight:600;font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto;border:1px solid var(--rule);border-radius:14px;background:var(--sheet)}
+table.fc{border-collapse:collapse;width:100%;min-width:720px;font-size:14px}
+table.fc th,table.fc td{text-align:left;vertical-align:top;padding:11px 12px;border-bottom:1px solid var(--rule)}
+table.fc th{font-size:12px;letter-spacing:.04em;color:var(--ink-2);background:var(--paper);position:sticky;top:0}
+table.fc tr:last-child td{border-bottom:0}
+table.fc td:first-child{font-weight:700;width:26%}
+table.fc td:nth-child(3){width:96px}
+.prompt{white-space:pre-wrap;overflow-wrap:anywhere;font:13.5px/1.65 var(--f-mono);background:var(--sheet);border:1px solid var(--rule);border-radius:12px;padding:14px;margin:8px 0;max-height:420px;overflow:auto}
+.phead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px}
+.srcs{font-size:13.5px;padding-left:18px}
+.srcs li{margin:4px 0;overflow-wrap:anywhere}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:999px;font-weight:700;font-size:14px;z-index:20;box-shadow:var(--shadow)}
+@media (prefers-reduced-motion:no-preference){.toast{transition:opacity .2s}}
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <div>
+      <h1>카드뉴스 <mark>자동공장</mark></h1>
+      <p>뉴스 기사를 붙여 넣으면 AI가 카드 제목·캡션·해시태그를 쓰고, 인스타그램용 이미지를 바로 만들어 줍니다. 영상 속 방법을 그대로 따르되, 공식 규칙에 걸리는 부분은 안전하게 바꿨습니다.</p>
+    </div>
+    <div class="src">분석한 영상: 실전부업클럽 · 2026.10.22 공개 · 25:07<br><a href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=1351s" target="_blank" rel="noopener">영상 보기 (22:31 정리 장면)</a></div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="화면 선택">
+    <button role="tab" data-tab="make" aria-selected="true">카드 만들기</button>
+    <button role="tab" data-tab="guide" aria-selected="false">따라하기 가이드</button>
+    <button role="tab" data-tab="check" aria-selected="false">영상 팩트체크</button>
+    <button role="tab" data-tab="prompts" aria-selected="false">프롬프트 모음</button>
+  </nav>
+
+  <!-- ============ MAKE ============ -->
+  <section id="tab-make">
+    <div class="make">
+      <div class="panel s1">
+        <h2><span class="step">STEP 1</span>뉴스 넣기</h2>
+        <p class="hint">네이버·네이트 <b>랭킹 뉴스</b>에서 1~3위 기사를 골라, 기사 본문을 길게 눌러 전체 복사한 뒤 붙여 넣으세요. 아래는 <b>예시 기사</b>입니다.</p>
+        <div class="row2">
+          <div><label class="f" for="press">언론사</label><input type="text" id="press" placeholder="예: 연합뉴스" value="인스타그램 도움말 센터(예시)"></div>
+          <div><label class="f" for="newsLink">기사 링크</label><input type="url" id="newsLink" placeholder="https://n.news.naver.com/..." value="https://help.instagram.com/708013994693013"></div>
+        </div>
+        <label class="f" for="newsText">기사 본문</label>
+        <textarea id="newsText" rows="7">인스타그램이 사진·캐러셀(여러 장) 게시물에도 성과 보너스를 지급하는 프로그램을 시험 운영하고 있다. 인스타그램 도움말 센터에 따르면 보너스는 일본·한국·미국의 일부 크리에이터에게 초대 방식으로 제공된다. 만 18세 이상이어야 하고, 프로페셔널(비즈니스 또는 크리에이터) 계정이 필요하다. 한국의 사진·캐러셀 보너스 자격 기준은 월 조회수 100만 회를 3개월 연속 달성하는 것이다. 게시물 하나는 올린 뒤 최대 28일 동안 수익을 낼 수 있고, 2주 단위 보너스 기간마다 최근 게시물 150개까지만 집계된다. 브랜디드 콘텐츠, 홍보(부스트)한 게시물, 공동 게시물은 제외된다.</textarea>
+        <label class="f" for="newsText2">같은 뉴스, 다른 언론사 기사 (선택·추천)</label>
+        <textarea id="newsText2" rows="5" placeholder="같은 사건을 다룬 다른 언론사 기사 본문을 붙여 넣으면, AI가 두 기사를 합쳐 한쪽에만 있는 숫자·발언까지 넣어 새로 씁니다."></textarea>
+        <div class="row" style="margin-top:12px">
+          <button class="btn mark" id="btnAI" type="button">AI로 자동 작성</button>
+          <button class="btn ghost" id="btnAIAgain" type="button" hidden>다시 쓰기</button>
+          <button class="btn ghost" id="btnStop" type="button" hidden>멈추기</button>
+          <button class="btn ghost sm" id="btnClear" type="button">기사 지우기</button>
+        </div>
+        <div class="status" id="aiStatus" role="status" aria-live="polite"></div>
+        <details class="alt" id="altBox">
+          <summary>ChatGPT로 하기 (영상과 같은 방식 · AI 버튼이 안 될 때)</summary>
+          <p class="hint">① 아래 버튼으로 프롬프트를 복사 → ② ChatGPT(또는 Claude 앱)에 붙여넣기 → ③ 받은 답을 그대로 복사해 아래 칸에 붙여넣고 [적용]을 누르세요.</p>
+          <div class="row" style="margin-top:8px"><button class="btn sm" id="btnCopyPrompt" type="button">프롬프트 복사 (기사 포함)</button></div>
+          <label class="f" for="pasteAnswer">AI 답변 붙여넣기</label>
+          <textarea id="pasteAnswer" rows="4" placeholder='{"label":"…","headline":"…", …} 형태의 답을 붙여 넣으세요'></textarea>
+          <div class="row" style="margin-top:8px"><button class="btn sm" id="btnApply" type="button">적용</button></div>
+        </details>
+      </div>
+
+      <div class="panel s2">
+        <h2><span class="step">STEP 2</span>카드 문구 확인</h2>
+        <p class="hint">AI가 쓴 문구가 여기에 들어옵니다. 고쳐도 카드가 바로 바뀝니다. <b>[대괄호]</b>로 감싼 말은 노란색으로 강조돼요.</p>
+        <label class="f" for="fLabel">분류 딱지</label>
+        <div class="row">
+          <input type="text" id="fLabel" value="SNS" style="max-width:140px">
+          <div class="row" id="labelChips">
+            <button class="chip" type="button">속보</button><button class="chip" type="button">이슈</button><button class="chip" type="button">정치</button><button class="chip" type="button">사회</button><button class="chip" type="button">경제</button><button class="chip" type="button">연예</button><button class="chip" type="button">생활</button>
+          </div>
+        </div>
+        <label class="f" for="fHeadline">큰 제목 (2~3줄)</label>
+        <textarea id="fHeadline" rows="3">인스타 사진 게시물도
+[보너스 대상 됐다]</textarea>
+        <label class="f" for="fSub">작은 설명 (1줄)</label>
+        <input type="text" id="fSub" value="한국은 월 100만 조회 3개월 연속이면 초대 대상">
+        <label class="f" for="fCaption">캡션 (게시물 설명란)</label>
+        <textarea id="fCaption" rows="9">💵인스타그램, 사진 한 장 게시물에도 보너스 준다
+
+인스타그램이 사진·캐러셀 게시물에도 성과 보너스를 주는 프로그램을 시험 운영하고 있습니다.
+대상은 일본·한국·미국의 일부 크리에이터이며, 초대를 받은 사람만 참여할 수 있습니다.
+만 18세 이상이어야 하고, 프로페셔널 계정이 필요합니다.
+한국의 자격 기준은 월 조회수 100만 회를 3개월 연속 넘기는 것입니다.
+게시물 하나는 올린 뒤 최대 28일 동안 수익을 낼 수 있고, 2주마다 최근 150개까지 집계됩니다.</textarea>
+        <label class="f" for="fTags">해시태그</label>
+        <input type="text" id="fTags" value="#인스타그램 #인스타보너스 #부업 #이슈 #속보">
+        <ul class="checks" id="checks" aria-label="올리기 전 확인할 점">
+          <li><span class="pill ok">확인</span><span>예시 내용은 인스타그램 공식 도움말 센터 규칙을 요약한 것입니다.</span></li>
+          <li><span class="pill warn">주의</span><span>실제 기사로 만들 때는 숫자·이름을 원문과 한 번 더 대조하세요.</span></li>
+        </ul>
+      </div>
+
+      <div class="panel pv">
+        <h2><span class="step">미리보기</span>인스타그램 카드</h2>
+        <div class="canvasbox" id="cvBox"><canvas id="cv" width="1080" height="1350" aria-label="카드뉴스 미리보기"></canvas></div>
+        <p class="hint">사진을 손가락(마우스)으로 끌면 위치가 움직여요. 사진 파일을 여기에 끌어 놓아도 됩니다.</p>
+        <div class="acts">
+          <button class="btn mark wide" id="btnSend" type="button" hidden>Claude에게 보내기</button>
+          <button class="btn wide" id="btnSave" type="button">이미지 저장 (PNG)</button>
+          <button class="btn ghost" id="btnCopyCap" type="button">캡션+태그 복사</button>
+          <button class="btn ghost" id="btnQueue" type="button">오늘 목록에 담기</button>
+        </div>
+        <div class="status" id="sendStatus" role="status" aria-live="polite"></div>
+        <textarea id="copyFallback" rows="3" hidden aria-label="복사할 내용"></textarea>
+        <div class="fallimg" id="fallImg" hidden>
+          <p class="hint">이 화면에서는 바로 저장이 안 돼요. 아래 이미지를 <b>길게 누르거나 우클릭</b>해서 저장하세요.</p>
+          <img id="fallImgEl" alt="저장할 카드 이미지">
+        </div>
+        <ul class="mini">
+          <li>숫자·이름을 원문과 대조했나요?</li>
+          <li>사진은 직접 찍었거나, AI로 만들었거나, 사용 허락된 것인가요?</li>
+          <li>특정인을 비하하거나 싸움을 부추기는 말은 없나요?</li>
+        </ul>
+      </div>
+
+      <div class="panel s3">
+        <h2><span class="step">STEP 3</span>사진·디자인</h2>
+        <label class="f" for="fileIn">사진</label>
+        <div class="row">
+          <input type="file" id="fileIn" accept="image/*">
+          <button class="btn ghost sm" id="btnNoImg" type="button">사진 빼기</button>
+          <button class="btn ghost sm" id="btnExample" type="button">예시 그림</button>
+        </div>
+        <p class="hint">안전한 순서: <b>직접 찍은 사진 → AI로 만든 그림 → 사진 없는 '텍스트형'</b>. 뉴스 기사 사진을 그대로 쓰면 저작권 문제가 생길 수 있어요(팩트체크 탭 참고).</p>
+        <label class="f" for="fImgPrompt">AI 배경 그림 프롬프트</label>
+        <textarea id="fImgPrompt" rows="3" placeholder="[AI로 자동 작성]을 누르면 ChatGPT·Grok에 넣을 배경 그림 설명이 여기에 생겨요."></textarea>
+        <div class="row" style="margin-top:8px"><button class="btn sm" id="btnCopyImgPrompt" type="button">그림 프롬프트 복사</button><span class="hint" style="margin:0">ChatGPT에서 그림을 만든 뒤 위 [사진]에 넣고, 사진 출처는 'AI 생성 연출 이미지'로 고르세요.</span></div>
+        <div class="row2" style="margin-top:6px">
+          <div><label class="f" for="zoom">확대</label><input type="range" id="zoom" min="100" max="250" value="100"></div>
+          <div><label class="f" for="offY">위아래 위치</label><input type="range" id="offY" min="-100" max="100" value="0"></div>
+        </div>
+        <label class="f" for="offX">좌우 위치</label><input type="range" id="offX" min="-100" max="100" value="0">
+
+        <label class="f">디자인</label>
+        <div class="seg" id="tplSeg" role="group" aria-label="디자인">
+          <button type="button" data-v="E" aria-pressed="true">빈티지 광고형</button>
+          <button type="button" data-v="D" aria-pressed="false">레드박스형</button>
+          <button type="button" data-v="A" aria-pressed="false">속보형</button>
+          <button type="button" data-v="B" aria-pressed="false">풀사진형</button>
+          <button type="button" data-v="C" aria-pressed="false">텍스트형</button>
+        </div>
+        <div id="bgRow" hidden>
+          <label class="f">텍스트형 배경색</label>
+          <div class="swatches" id="swatches">
+            <button type="button" data-c="#131A2A" style="background:#131A2A" aria-label="남색" aria-pressed="true"></button>
+            <button type="button" data-c="#C62828" style="background:#C62828" aria-label="빨강" aria-pressed="false"></button>
+            <button type="button" data-c="#FFD400" style="background:#FFD400" aria-label="노랑" aria-pressed="false"></button>
+            <button type="button" data-c="#F5F3EE" style="background:#F5F3EE" aria-label="흰색" aria-pressed="false"></button>
+            <button type="button" data-c="#0F5132" style="background:#0F5132" aria-label="초록" aria-pressed="false"></button>
+          </div>
+        </div>
+        <div class="row2">
+          <div>
+            <label class="f">비율</label>
+            <div class="seg" id="ratioSeg" role="group" aria-label="비율">
+              <button type="button" data-v="45" aria-pressed="true">4:5 세로</button>
+              <button type="button" data-v="11" aria-pressed="false">1:1 정사각</button>
+            </div>
+          </div>
+          <div>
+            <label class="f">제목 글꼴</label>
+            <div class="seg" id="fontSeg" role="group" aria-label="제목 글꼴">
+              <button type="button" data-v="bhs" aria-pressed="true">굵은 제목체</button>
+              <button type="button" data-v="noto" aria-pressed="false">고딕</button>
+            </div>
+          </div>
+        </div>
+        <div class="row2">
+          <div><label class="f" for="fHandle">내 계정 이름</label><input type="text" id="fHandle" value="@priamos301"></div>
+          <div><label class="f" for="fBrand">로고 글자</label><input type="text" id="fBrand" value="PRIAMOS"></div>
+        </div>
+        <label class="f" for="fSource">출처 줄 (비워 두면 카드에 안 나옵니다)</label><input type="text" id="fSource" value="" placeholder="예: 출처: 연합뉴스 보도 종합">
+        <label class="f" for="fCredit">사진 출처</label>
+        <div class="row">
+          <input type="text" id="fCredit" value="이미지: 예시 그래픽" style="max-width:260px">
+          <div class="row" id="creditChips">
+            <button class="chip" type="button">사진: 직접 촬영</button><button class="chip" type="button">AI 생성 연출 이미지</button><button class="chip" type="button">이미지: 직접 제작</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel obsec">
+        <div class="qhead">
+          <h2 style="margin:0"><span class="step">CLAUDE</span>Claude에게 보낸 카드</h2>
+          <span class="hint" id="obSummary"></span>
+        </div>
+        <p class="hint" id="obNote">[Claude에게 보내기]를 누르면 카드 이미지와 캡션이 여기에 쌓입니다. 채팅에서 <b>"보낸 카드 올려"</b>라고 말하면 Claude가 사실 확인 후 인스타그램에 올리고, 결과를 여기에 표시합니다. 이 목록은 페이지 주인만 볼 수 있어요.</p>
+        <ul class="qlist" id="obList"></ul>
+        <div class="empty" id="obEmpty">아직 보낸 카드가 없어요. 카드를 다 만든 뒤 미리보기 아래 [Claude에게 보내기]를 누르세요.</div>
+      </div>
+
+      <div class="panel qsec">
+        <div class="qhead">
+          <h2 style="margin:0"><span class="step">STEP 4</span>오늘 올릴 목록</h2>
+          <span class="hint" id="qSummary"></span>
+        </div>
+        <p class="hint">카드를 다 만들면 [오늘 목록에 담기]를 누르세요. 추천 시간이 자동으로 붙습니다. 인스타그램 앱의 <b>예약 게시</b>로 시간을 맞춰 두면 그 시간에 자동으로 올라가요(하루 25개, 30일 앞까지). 목록은 이 브라우저에만 저장됩니다.</p>
+        <ul class="qlist" id="qList"></ul>
+        <div class="empty" id="qEmpty">아직 담은 카드가 없어요. 위에서 카드를 만든 뒤 [오늘 목록에 담기]를 누르면 여기에 쌓입니다. 하루 5~10개가 영상 속 추천 개수예요.</div>
+        <div class="row" style="margin-top:10px"><button class="btn ghost sm" id="btnQClear" type="button">목록 비우기</button><span class="hint" id="qClearAsk" hidden>한 번 더 누르면 모두 지워져요.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ GUIDE ============ -->
+  <section id="tab-guide" class="read" hidden>
+    <section>
+      <h2>영상 속 방법, 한 줄 요약</h2>
+      <p class="lede">26살 '플로우' 대표는 <b>뉴스 랭킹 1~3위 기사를 카드뉴스 사진 한 장으로 만들어 인스타그램에 하루 5~10개 올리고</b>, 조회수가 쌓이면 인스타그램 <b>'보너스'</b>로 달러를 받습니다. 영상 22:31의 화이트보드 정리는 이 5단계입니다.</p>
+      <ol class="flow">
+        <li>인스타 가입<small>영상 <a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=1348s" target="_blank" rel="noopener">22:28</a></small></li>
+        <li>계정 만들기<small>프로페셔널 계정으로</small></li>
+        <li>뉴스 고르기<small>네이버·네이트 랭킹 <a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=1354s" target="_blank" rel="noopener">22:34</a></small></li>
+        <li>카드 이미지 만들기<small>원래는 미리캔버스 <a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=1367s" target="_blank" rel="noopener">22:47</a></small></li>
+        <li>인스타에 올리기<small>캡션은 GPT로 <a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=1376s" target="_blank" rel="noopener">22:56</a></small></li>
+      </ol>
+      <div class="note"><b>이 페이지가 대신해 주는 것:</b> 영상에서 대표가 '무료 자료'로 나눠 주겠다던 3가지(카드뉴스 템플릿, 저작권 걱정 줄이는 GPT 프롬프트, 따라하기 전자책)를 직접 만들어 넣었습니다. [카드 만들기] 탭이 템플릿+AI 자동 작성, [프롬프트 모음] 탭이 GPT 명령어, 이 탭이 전자책 역할입니다. 따로 신청할 필요가 없어요.</div>
+    </section>
+
+    <section>
+      <h2>시작 전에: 자격부터 확인</h2>
+      <p>인스타그램 공식 규칙(<a href="https://help.instagram.com/708013994693013" target="_blank" rel="noopener">보너스 프로그램 규칙</a>)에 따른 조건입니다.</p>
+      <ul>
+        <li><b>만 18세 이상 본인</b>이어야 합니다.</li>
+        <li><b>한국(또는 일본·미국)에 살고 세금 신고 지위</b>가 있어야 합니다.</li>
+        <li><b>프로페셔널 계정</b>(크리에이터 또는 비즈니스)이어야 합니다.</li>
+        <li>파트너 수익화 정책과 콘텐츠 수익화 정책을 지켜야 합니다.</li>
+        <li>보너스는 <b>초대받은 사람만</b> 쓸 수 있고, 선정에 무작위 요소가 있습니다. (<a href="https://help.instagram.com/331274061770840" target="_blank" rel="noopener">공식 안내</a>)</li>
+      </ul>
+      <div class="note warn"><b>영상과 다른 점:</b> 영상(<a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=311s" target="_blank" rel="noopener">5:11</a>)에서는 "학생은 부모님 걸로 가입하면 된다"고 했지만, 공식 규칙은 참가자 본인이 만 18세 이상이어야 한다고 정해 둡니다. 남의 명의로 가입해 수익을 받는 건 규칙 위반이 될 수 있고, 걸리면 수익화 자격을 잃을 수 있어요. <span class="op">Claude의 의견</span> 미성년자라면 지금은 카드 만드는 연습과 계정 운영 경험을 쌓고, 만 18세가 된 뒤 본인 명의로 신청하는 게 안전합니다.</div>
+    </section>
+
+    <section>
+      <h2>중학생도 따라 하는 단계별 방법</h2>
+      <ol class="steps">
+        <li>
+          <h3>인스타그램 앱 설치하고 가입하기</h3>
+          <p>안드로이드는 Play 스토어, 아이폰은 App Store에서 '인스타그램'을 검색해 설치합니다. 휴대폰 번호나 이메일로 가입하세요. 내 일상 계정이 있어도 <b>카드뉴스용 새 계정</b>을 따로 만드는 게 좋습니다. <span class="op">Claude의 의견</span></p>
+        </li>
+        <li>
+          <h3>프로페셔널 계정으로 바꾸기</h3>
+          <p>프로필 → 오른쪽 위 메뉴(≡) → 설정 → <b>계정 유형 및 도구</b> → <b>프로페셔널 계정으로 전환</b> → '크리에이터' 선택. 메뉴 이름은 앱 버전에 따라 조금 다를 수 있어요. <span class="uc">확실하지 않은 사실</span> (<a href="https://help.instagram.com/138925576505882" target="_blank" rel="noopener">공식: 프로페셔널 계정이란</a>)</p>
+          <p>계정 이름은 무엇을 올리는지 바로 알 수 있게 짓습니다. 예: <b>오늘의이슈한장</b>, <b>3초뉴스</b>. 프로필 사진은 얼굴 대신 로고나 글자로 해도 됩니다(영상 속 대표도 얼굴을 공개하지 않았어요).</p>
+        </li>
+        <li>
+          <h3>오늘의 뉴스 고르기 <a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=561s" target="_blank" rel="noopener">9:21</a></h3>
+          <p>네이버 뉴스 앱의 <b>랭킹</b> 메뉴나 <a href="https://news.nate.com/rank/" target="_blank" rel="noopener">네이트 랭킹뉴스</a>에서 많이 본 뉴스 1~3위를 고릅니다. 영상에서는 "이미 많은 사람이 본 게 증명된 기사"라서 순위권 기사를 고른다고 설명합니다.</p>
+          <p>영상은 <b>정치·사회 이슈·연예</b>가 잘 된다고 말합니다(<a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=541s" target="_blank" rel="noopener">9:01</a>). 다만 재판·판결, 사고·사망 같은 주제는 인스타그램이 <b>수익을 줄이거나 막을 수 있는 주제</b>로 정해 둔 것이라, 생활·경제·IT·연예 소식을 섞는 편이 안전합니다. (<a href="https://help.instagram.com/2635536099905516" target="_blank" rel="noopener">콘텐츠 수익화 정책</a>)</p>
+        </li>
+        <li>
+          <h3>기사 복사해서 [카드 만들기]에 붙여넣기</h3>
+          <p>기사 본문을 길게 눌러 '전체 선택' → '복사'. [카드 만들기] 탭 STEP 1의 '기사 본문'에 붙여 넣고, 언론사 이름과 링크도 넣습니다. 영상에서는 링크만 GPT에 넣었지만(<a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=673s" target="_blank" rel="noopener">11:13</a>), 링크만으로는 AI가 기사를 못 읽는 경우가 많아서 본문을 붙이는 게 확실합니다.</p>
+        </li>
+        <li>
+          <h3>[AI로 자동 작성] 누르기</h3>
+          <p>10~40초 뒤 제목, 작은 설명, 캡션, 해시태그, '확인할 점'이 채워지고 카드가 자동으로 그려집니다. 처음 누를 때 'Claude 사용 허용' 창이 뜨면 허용을 누르세요. 이 버튼이 안 되면 STEP 1 아래 <b>ChatGPT로 하기</b>를 열어 영상처럼 ChatGPT로 해도 됩니다.</p>
+          <p><b>꼭 할 일:</b> 숫자·이름·날짜를 원문과 눈으로 한 번 대조하세요. 틀린 내용을 올리면 '허위 정보'로 분류돼 수익을 못 받을 수 있습니다. (<a href="https://help.instagram.com/512371932629820" target="_blank" rel="noopener">파트너 수익화 정책</a>)</p>
+        </li>
+        <li>
+          <h3>사진 넣기 <a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=610s" target="_blank" rel="noopener">10:10</a></h3>
+          <p>영상에서는 기사 속 인물 사진을 그대로 끌어다 썼습니다. 이 부분은 <b>따라 하지 마세요.</b> 뉴스 사진은 찍은 사람(언론사)의 저작물로 따로 보호될 수 있습니다(<a href="https://www.mcst.go.kr/kor/s_policy/copyright/knowledge/know04.jsp" target="_blank" rel="noopener">문화체육관광부 안내</a>). 대신:</p>
+          <ul>
+            <li>직접 찍은 사진(거리, 건물, 물건, 하늘 등)</li>
+            <li>ChatGPT 등으로 만든 <b>분위기 그림</b>(실제 인물 얼굴은 만들지 않기). 프롬프트는 [프롬프트 모음] 탭에 있어요.</li>
+            <li>사진 없이 글자만 크게 넣는 <b>텍스트형</b> 디자인</li>
+          </ul>
+        </li>
+        <li>
+          <h3>이미지 저장 + 캡션 복사</h3>
+          <p>[이미지 저장]을 누르면 확인 창이 뜨고, 허용하면 휴대폰·PC에 PNG로 저장됩니다. [캡션+태그 복사]를 누르면 설명란에 붙일 글이 복사됩니다. 그다음 [오늘 목록에 담기]로 목록에 쌓아 두세요.</p>
+        </li>
+        <li>
+          <h3>인스타그램에 올리기, 또는 예약해서 자동으로 올리기</h3>
+          <p>공식 도움말 순서(<a href="https://help.instagram.com/439971288310029/" target="_blank" rel="noopener">예약 게시 방법</a>):</p>
+          <ul>
+            <li>왼쪽 위 <b>만들기(+)</b> → <b>게시물</b> → 저장한 카드 선택 → 다음</li>
+            <li>캡션 칸에 붙여넣기</li>
+            <li><b>더 보기(⋯)</b> → <b>이 게시물 예약</b> 켜기 → 날짜·시간 선택 → 완료 → 뒤로 → <b>예약</b></li>
+          </ul>
+          <p>공개 계정이면 <b>하루 25개, 30일 앞까지</b> 예약할 수 있어요. 아침에 10개를 만들어 시간별로 예약해 두면, 학교나 회사에 있어도 정해진 시간에 자동으로 올라갑니다. 이것이 이 방법의 '자동화'입니다.</p>
+        </li>
+        <li>
+          <h3>하루 5~10개, 꾸준히 <a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=1181s" target="_blank" rel="noopener">19:41</a></h3>
+          <p>영상 속 추천은 하루 5~10개입니다. 공식 규칙상 보너스는 <b>2주마다 최근 게시물 150개까지만</b> 계산되고, 게시물 하나는 올린 뒤 <b>최대 28일</b>까지 수익을 냅니다. 하루 10개 × 14일 = 140개라서 한도 안에 들어갑니다.</p>
+        </li>
+        <li>
+          <h3>보너스 초대가 왔는지 확인하기</h3>
+          <p>프로필 맨 위 <b>프로페셔널 대시보드</b> → 오른쪽 위 설정 → <b>보너스</b> → 안내에 따라 <b>보너스 활성화</b>. 초대가 와야 이 메뉴가 보입니다. 한국에서 사진·캐러셀 보너스 대상이 되려면 <b>월 조회수 100만 회를 3개월 연속</b> 넘겨야 합니다. 그 뒤 <a href="https://help.instagram.com/395463438322618" target="_blank" rel="noopener">지급 계정</a>을 설정하면 돈을 받을 수 있어요.</p>
+          <p>초대 메일은 진짜인지 꼭 확인하세요. 공식 초대는 아이디·비밀번호를 묻지 않습니다. (<a href="https://help.instagram.com/331274061770840" target="_blank" rel="noopener">공식 안내</a>)</p>
+        </li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>얼마나 벌 수 있을까? 계산해 보기</h2>
+      <p>영상 속 대표는 "1,000회 노출당 약 500원, 100만 조회면 약 50만 원"이라고 말합니다(<a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=1167s" target="_blank" rel="noopener">19:27</a>). 공식 규칙에는 정해진 단가가 없고, 보는 사람의 나라·나이, 반응, 광고주 수요에 따라 달라진다고 적혀 있습니다. 그래서 아래 계산은 <span class="uc">확실하지 않은 사실</span>인 영상 속 단가를 넣은 <b>어림값</b>입니다.</p>
+      <div class="calc">
+        <div class="grid">
+          <div><label class="f" for="cPosts">하루 올리는 개수</label><input type="number" id="cPosts" min="1" max="25" value="7"></div>
+          <div><label class="f" for="cViews">게시물 1개 평균 조회수</label><input type="number" id="cViews" min="0" step="500" value="5000"></div>
+          <div><label class="f" for="cRpm">1,000회당 원 (영상 주장 500)</label><input type="number" id="cRpm" min="0" step="50" value="500"></div>
+        </div>
+        <output id="cOut" for="cPosts cViews cRpm"></output>
+      </div>
+    </section>
+
+    <section>
+      <h2>두 번째 방법: 얼굴 없는 AI 캐릭터 계정 <a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=845s" target="_blank" rel="noopener">14:05</a></h2>
+      <p>영상 후반에서 대표는 AI로 만든 캐릭터 영상으로 3개월 만에 팔로워 10만 명을 모으고 렌즈 등 광고 제의를 받는다고 보여 줍니다. 방법은 두 단계입니다.</p>
+      <ol class="steps">
+        <li><h3>ChatGPT로 캐릭터 그림 만들기</h3><p>영상에서 쓴 문장 그대로: "다람쥐. 9:16으로 이미지를 만들어줘. 귀엽게 만들어줘. 공원에서 도토리 들고 웃고 있는 장면으로 묘사해줘." 완성된 그림을 다운로드합니다.</p></li>
+        <li><h3>Grok으로 움직이는 영상 만들기 <a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=879s" target="_blank" rel="noopener">14:39</a></h3><p>일론 머스크의 xAI가 만든 <a href="https://grok.com/imagine" target="_blank" rel="noopener">Grok Imagine</a>에 그림을 올리고 "해당 이미지 영상으로 만들어줘. 특징: 다람쥐가 웃고 있어. 대사: 나는 다람쥐야. 도토리가 너무 맛있어. 히히. 기분 좋아."라고 입력합니다. 짧은 영상 여러 개를 이어 붙여 릴스로 올립니다.</p><p>영상 속 대표는 GPT(그림)+Grok(영상) 조합이 가장 저렴하다고 말합니다. 무료로 몇 번 쓸 수 있는지는 요금제에 따라 바뀝니다. <span class="uc">확실하지 않은 사실</span></p></li>
+      </ol>
+      <div class="note"><b>꼭 지킬 것:</b> 사람처럼 보이는 AI 영상이나 진짜 같은 AI 음성은 올릴 때 직접 'AI 정보' 표시를 해야 합니다(<a href="https://about.fb.com/news/2024/02/labeling-ai-generated-images-on-facebook-instagram-and-threads/" target="_blank" rel="noopener">Meta 발표</a>). 광고를 받아 올리는 게시물은 '유료 파트너십' 표시를 하고(<a href="https://help.instagram.com/1109894795810258/" target="_blank" rel="noopener">공식 방법</a>), 이런 브랜디드 콘텐츠는 보너스 집계에서 빠집니다.</div>
+    </section>
+
+    <section>
+      <h2>영상과 다르게 해야 하는 5가지</h2>
+      <ul>
+        <li><b>남의 명의로 가입하지 않기.</b> 본인이 만 18세 이상이어야 합니다.</li>
+        <li><b>기사 사진을 그대로 쓰지 않기.</b> 사진은 따로 저작권이 있을 수 있어요.</li>
+        <li><b>댓글 싸움을 노리지 않기.</b> 영상은 "싸움 나면 이득"이라 했지만(<a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=541s" target="_blank" rel="noopener">9:01</a>), 공식 정책은 정치 등 논쟁 주제를 편 가르고 자극하는 방식으로 다루면 수익을 줄이거나 막는다고 합니다.</li>
+        <li><b>'좋아요·댓글 달아 주세요' 쓰지 않기.</b> 참여 유도는 보너스 지급 거부 사유입니다.</li>
+        <li><b>잘된 게시물을 멘트만 바꿔 다시 올리지 않기.</b> 영상(<a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=1233s" target="_blank" rel="noopener">20:33</a>)의 단톡방 재업로드 방식은 '의미 있는 변화 없이 재사용한 콘텐츠'로 보일 수 있어, 수익화가 안 될 위험이 있습니다. <span class="op">Claude의 의견</span></li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>어디까지 '자동'인가요?</h2>
+      <p><b>자동으로 되는 것:</b> 기사 → 제목·캡션·해시태그·확인할 점 작성(AI), 글자 크기와 배치(도구), 정해진 시간에 올리기(인스타그램 예약).</p>
+      <p><b>사람이 해야 하는 것:</b> 기사 고르기, 사실 대조, 사진 고르기, 예약 버튼 누르기. 하루 30분~1시간이면 10개를 만들 수 있습니다. <span class="op">Claude의 의견</span></p>
+      <p><span class="op">Claude의 의견</span> 사람 확인 없이 기사를 긁어 바로 올리는 '완전 자동 봇'은 일부러 만들지 않았습니다. 오보·저작권·재사용 콘텐츠 정책에 걸리면 계정의 수익화 자격 자체가 막힐 수 있어서, 확인 단계 하나를 남겨 두는 편이 결국 더 많이 법니다. 영상 속 대표도 "딸깍 한 번이면 된다는 건 다 사기"라고 말합니다(<a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=1382s" target="_blank" rel="noopener">23:02</a>).</p>
+    </section>
+  </section>
+
+  <!-- ============ CHECK ============ -->
+  <section id="tab-check" class="read" hidden>
+    <section>
+      <h2>영상 속 말, 공식 규칙과 맞을까?</h2>
+      <p>영상 자막 전체를 읽고, 주장마다 인스타그램(Meta) 공식 도움말과 정부 자료로 확인했습니다. 확인일: 2026년 10월 25일.</p>
+      <p class="row" style="gap:6px"><span class="pill ok">맞음</span><span class="pill warn">주의</span><span class="pill bad">다름</span><span class="pill unk">확인 불가</span></p>
+    </section>
+    <div class="tablewrap">
+      <table class="fc">
+        <thead><tr><th>영상 속 주장</th><th>공식 자료 내용</th><th>판정</th><th>출처</th></tr></thead>
+        <tbody>
+          <tr><td>인스타 사진 한 장으로도 달러 수익이 난다 <a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=497s" target="_blank" rel="noopener">8:17</a></td><td>릴스 보너스와 별도로 '사진·캐러셀 보너스'가 있습니다. 다만 기간 한정 시험 운영이고 초대받은 사람만 됩니다.</td><td><span class="pill ok">맞음</span></td><td><a href="https://help.instagram.com/708013994693013" target="_blank" rel="noopener">보너스 규칙</a></td></tr>
+          <tr><td>한국·일본 등 몇 나라만 된다 <a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=311s" target="_blank" rel="noopener">5:11</a></td><td>일본·한국·미국의 일부 크리에이터에게 초대제로 제공됩니다.</td><td><span class="pill ok">맞음</span></td><td><a href="https://help.instagram.com/708013994693013" target="_blank" rel="noopener">보너스 규칙</a></td></tr>
+          <tr><td>만 18세 이상만, 학생은 부모님 명의로 하면 된다</td><td>만 18세 이상, 해당 국가 거주·세금 지위가 필요합니다. 부모님 명의 우회는 공식 규칙과 맞지 않습니다.</td><td><span class="pill bad">다름</span></td><td><a href="https://help.instagram.com/708013994693013" target="_blank" rel="noopener">보너스 규칙</a></td></tr>
+          <tr><td>팔로워 1천 명만 돼도 보너스 가능 <a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=791s" target="_blank" rel="noopener">13:11</a></td><td>공식 기준은 팔로워 수가 아니라 조회수입니다. 한국 사진·캐러셀 보너스는 월 100만 조회를 3개월 연속 넘겨야 하고, 그래도 전원이 초대되지는 않습니다. (릴스 보너스는 3개월간 500만 조회)</td><td><span class="pill bad">다름</span></td><td><a href="https://help.instagram.com/708013994693013" target="_blank" rel="noopener">보너스 규칙</a></td></tr>
+          <tr><td>1,000회 노출당 약 500원, 100만 조회면 약 50만 원 <a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=1167s" target="_blank" rel="noopener">19:27</a></td><td>공식 자료에 고정 단가는 없습니다. 시청자 국가·나이, 반응, 광고주 수요에 따라 달라지고, 프로필에서 본 조회 등은 계산에서 빠집니다.</td><td><span class="pill unk">확인 불가</span></td><td><a href="https://help.instagram.com/708013994693013" target="_blank" rel="noopener">보너스 규칙</a></td></tr>
+          <tr><td>2주에 150개까지 보너스를 받을 수 있다 <a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=1181s" target="_blank" rel="noopener">19:41</a></td><td>2주 보너스 기간마다 최근 콘텐츠 150개가 대상입니다. 게시물 하나는 최대 28일간 수익을 냅니다.</td><td><span class="pill ok">맞음</span></td><td><a href="https://help.instagram.com/708013994693013" target="_blank" rel="noopener">보너스 규칙</a></td></tr>
+          <tr><td>한 달에 두 번 정산해 준다</td><td>보너스가 2주 단위 기간으로 계산되는 것은 맞습니다. 실제 입금 날짜는 지급 계정 설정에 따라 다를 수 있습니다.</td><td><span class="pill warn">주의</span></td><td><a href="https://help.instagram.com/708013994693013" target="_blank" rel="noopener">보너스 규칙</a> · <a href="https://help.instagram.com/217939383051653/" target="_blank" rel="noopener">지급 안내</a></td></tr>
+          <tr><td>정치·사회·연예가 잘 되고, 댓글 싸움은 이득이다 <a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=541s" target="_blank" rel="noopener">9:01</a></td><td>정치 성향 등 논쟁 주제를 양극화·선동적으로 다루면 수익이 줄거나 막힐 수 있습니다. 재판·사법 절차, 사망·사고도 수익 제한 주제입니다. 참여 유도는 지급 거부 사유입니다.</td><td><span class="pill warn">주의</span></td><td><a href="https://help.instagram.com/2635536099905516" target="_blank" rel="noopener">콘텐츠 수익화 정책</a> · <a href="https://help.instagram.com/434406642308284" target="_blank" rel="noopener">보너스 일반 규칙</a></td></tr>
+          <tr><td>GPT로 한 번 바꿔 쓰면 저작권 신고를 안 당한다 <a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=686s" target="_blank" rel="noopener">11:26</a></td><td>저작권법상 '사실의 전달에 불과한 시사보도'만 보호받지 못합니다. 기자의 분석·표현이 담긴 기사는 보호됩니다. 인스타그램은 의미 있는 추가 없이 재가공한 비독창 콘텐츠는 수익화하지 않고, 소유권 주장이 들어오면 지급액을 조정합니다.</td><td><span class="pill bad">다름</span></td><td><a href="https://www.mcst.go.kr/kor/s_policy/copyright/knowledge/know04.jsp" target="_blank" rel="noopener">문화체육관광부</a> · <a href="https://help.instagram.com/2635536099905516" target="_blank" rel="noopener">수익화 정책</a></td></tr>
+          <tr><td>정치인·연예인 사진은 자유롭게 써도 된다 <a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=626s" target="_blank" rel="noopener">10:26</a></td><td>초상권과 저작권은 별개입니다. 공인이라 초상권이 일부 좁아지더라도, 사진 자체는 찍은 사람의 저작물로 따로 보호될 수 있습니다.</td><td><span class="pill bad">다름</span></td><td><a href="https://www.mcst.go.kr/kor/s_policy/copyright/knowledge/know04.jsp" target="_blank" rel="noopener">문화체육관광부</a></td></tr>
+          <tr><td>터진 게시물은 멘트만 바꿔 또 올려도 터진다 <a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=1233s" target="_blank" rel="noopener">20:33</a></td><td>인스타그램은 직접 만들었거나 의미 있게 고친 콘텐츠만 수익화합니다. 같은 카드를 문구만 바꿔 반복하면 비독창 콘텐츠로 볼 여지가 있습니다. <span class="op">Claude의 의견</span></td><td><span class="pill warn">주의</span></td><td><a href="https://help.instagram.com/2635536099905516" target="_blank" rel="noopener">수익화 정책</a></td></tr>
+          <tr><td>AI 영상으로 팔로워를 모을 수 있다 <a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=845s" target="_blank" rel="noopener">14:05</a></td><td>가능합니다. 단, 사실적인 AI 영상·음성은 직접 'AI 정보' 표시를 해야 합니다.</td><td><span class="pill ok">맞음</span></td><td><a href="https://about.fb.com/news/2024/02/labeling-ai-generated-images-on-facebook-instagram-and-threads/" target="_blank" rel="noopener">Meta 발표</a></td></tr>
+          <tr><td>AI 계정으로 대기업 광고를 받는다 <a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=441s" target="_blank" rel="noopener">7:21</a></td><td>광고는 보너스와 별개의 수익입니다. 브랜디드 콘텐츠는 보너스에서 빠지고, 유료 파트너십 표시를 써야 합니다.</td><td><span class="pill warn">주의</span></td><td><a href="https://help.instagram.com/708013994693013" target="_blank" rel="noopener">보너스 규칙</a> · <a href="https://help.instagram.com/1109894795810258/" target="_blank" rel="noopener">파트너십 표시</a></td></tr>
+          <tr><td>월 1,500만~2,000만 원, 총 20억 원 이상 벌었다</td><td>영상 속 앱 화면이 근거의 전부입니다. 외부에서 검증할 방법이 없습니다.</td><td><span class="pill unk">확인 불가</span></td><td>영상 자체</td></tr>
+          <tr><td>'딸깍 한 번'은 사기, 매일 꾸준히 해야 한다 <a class="ts" href="https://www.youtube.com/watch?v=DkSW7k6zsDI&t=1382s" target="_blank" rel="noopener">23:02</a></td><td>공식 자료로 판단할 내용은 아닙니다. 보너스가 조회수 기준·초대제라는 점을 보면 꾸준함이 필요하다는 말은 타당합니다. <span class="op">Claude의 의견</span></td><td><span class="pill ok">맞음</span></td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <section style="margin-top:24px">
+      <h3>참고로 알아 둘 것</h3>
+      <ul>
+        <li>콘텐츠 수익화 정책의 '금지 형식'에는 <b>"사진 위에 글자를 얹은 텍스트 몽타주"</b>가 들어 있습니다. 문맥상 영상(동영상) 형식에 대한 규정으로 보이지만, 카드뉴스에도 적용되는지는 공식 자료만으로 분명하지 않습니다. <span class="uc">확실하지 않은 사실</span> 캡션에 배경 설명을 덧붙여 '의미 있는 추가'를 만드는 것이 이 도구의 AI 작성 규칙에 들어간 이유입니다.</li>
+        <li><span class="op">Claude의 의견</span> 영상 설명란의 '무료 자료 신청 → 네이버 폼 → 전용 채팅방' 구조는 이런 부업 채널에서 유료 강의 안내로 이어지는 경우가 많습니다. 이 페이지에 같은 역할의 자료를 모두 넣어 두었으니, 개인정보를 넘길지는 신중히 판단하세요.</li>
+        <li><span class="op">Claude의 의견</span> 해외 플랫폼에서 받은 수익도 소득 신고 대상이 될 수 있습니다. 금액이 커지면 국세청(126)이나 세무사에게 확인하세요.</li>
+      </ul>
+      <h3>출처</h3>
+      <ul class="srcs">
+        <li><a href="https://help.instagram.com/708013994693013" target="_blank" rel="noopener">Instagram 도움말 센터 — About Instagram's bonus program rules</a></li>
+        <li><a href="https://help.instagram.com/434406642308284" target="_blank" rel="noopener">Instagram 도움말 센터 — Instagram bonus program general rules</a></li>
+        <li><a href="https://help.instagram.com/331274061770840" target="_blank" rel="noopener">Instagram 도움말 센터 — About bonuses on Instagram</a></li>
+        <li><a href="https://help.instagram.com/2635536099905516" target="_blank" rel="noopener">Instagram 도움말 센터 — Instagram Content Monetization Policies</a></li>
+        <li><a href="https://help.instagram.com/512371932629820" target="_blank" rel="noopener">Instagram 도움말 센터 — Instagram Partner Monetization Policies</a></li>
+        <li><a href="https://help.instagram.com/439971288310029/" target="_blank" rel="noopener">Instagram 도움말 센터 — 예약 게시물 만들기·관리</a></li>
+        <li><a href="https://www.mcst.go.kr/kor/s_policy/copyright/knowledge/know04.jsp" target="_blank" rel="noopener">문화체육관광부 — 저작권 일반상식: 보호받지 못하는 저작물</a></li>
+        <li><a href="https://about.fb.com/news/2024/02/labeling-ai-generated-images-on-facebook-instagram-and-threads/" target="_blank" rel="noopener">Meta 뉴스룸 — Labeling AI-Generated Images on Facebook, Instagram and Threads</a></li>
+        <li><a href="https://news.nate.com/rank/" target="_blank" rel="noopener">네이트 뉴스 — 랭킹뉴스</a></li>
+        <li><a href="https://grok.com/imagine" target="_blank" rel="noopener">Grok Imagine (xAI)</a></li>
+        <li><a href="https://www.youtube.com/watch?v=DkSW7k6zsDI" target="_blank" rel="noopener">분석 대상 영상 — 실전부업클럽 (자막 982구간 전체 분석)</a></li>
+      </ul>
+    </section>
+  </section>
+
+  <!-- ============ PROMPTS ============ -->
+  <section id="tab-prompts" class="read" hidden>
+    <section>
+      <h2>복사해서 쓰는 프롬프트</h2>
+      <p>영상 속 대표가 '무료 선물'로 주겠다던 GPT 명령어를 대신 만들었습니다. ChatGPT, Claude 앱 어디에 붙여도 됩니다.</p>
+
+      <div class="phead"><h3 style="margin:0">1. 기사 → 카드뉴스 원고 (가장 많이 씀)</h3><button class="btn sm" type="button" data-copy="pCaption">복사</button></div>
+      <pre class="prompt" id="pCaption">너는 인스타그램 카드뉴스 편집자야. 아래 [기사]를 읽고 카드뉴스 원고를 만들어 줘.
+
+[지켜야 할 규칙]
+1. 기사에 있는 사실만 써. 추측·과장·없는 내용 금지. 이름·숫자·날짜는 기사 그대로.
+2. 기사 문장을 그대로 베끼지 말고, 사실만 뽑아 짧은 새 문장으로 다시 써. 기자의 의견·분석 문장은 옮기지 마.
+3. 정치·사회 이슈는 중립적으로. 특정 인물·집단 조롱, 편 가르기, 분노를 부추기는 낚시 표현 금지.
+4. "좋아요 눌러", "댓글 달아줘", "공유해" 같은 참여 유도 문구 금지.
+5. 캡션은 ① 첫 줄: 주제 이모지 1개(🚨사건 💥이슈 💵경제 🤖IT 🌍국제 🎬연예) + 제목 한 줄 ② 빈 줄 ③ 본문 4~8문장, 한 문장마다 줄바꿈, "~습니다"체 순서. 출처 줄은 쓰지 마.
+
+[출력 형식]
+카드 제목: 2줄. 첫 줄은 상황, 둘째 줄은 핵심 결과를 [대괄호]로 감싸기(빨간 상자). 한 줄 18자 이내
+그림 프롬프트: 카드 배경용 AI 그림 설명 2~3문장 (4:5 세로, 글자 없이, 실존 인물 닮게 그리지 않기, 아래쪽은 어둡게)
+캡션: 위 5번 구성대로
+해시태그: 5~8개
+확인할 점: 원문과 다시 대조할 숫자·이름, 재판·사고·사망처럼 수익이 줄 수 있는 주제인지, 사진 저작권 주의, 명예훼손 위험
+
+[기사]
+언론사:
+링크:
+본문: (여기에 기사 본문을 붙여 넣기)</pre>
+
+      <div class="phead"><h3 style="margin:0">2. 나만의 GPT 만들기용 지침 (영상처럼 '붙이기만' 하려면)</h3><button class="btn sm" type="button" data-copy="pGpt">복사</button></div>
+      <p class="hint">ChatGPT의 'GPT 만들기' 화면 '지침' 칸에 붙여 넣으세요. 이 기능을 쓸 수 있는 요금제는 바뀔 수 있습니다. <span class="uc">확실하지 않은 사실</span></p>
+      <pre class="prompt" id="pGpt">역할: 너는 한국어 인스타그램 카드뉴스 편집자다.
+
+사용자가 기사 본문(또는 제목과 링크)을 보내면 아래 순서로 답한다.
+- 링크만 왔는데 기사를 읽을 수 없으면, 추측해서 쓰지 말고 "기사 본문을 붙여 주세요"라고만 답한다.
+- 기사에 있는 사실만 쓴다. 이름·숫자·날짜는 원문 그대로.
+- 원문 문장을 베끼지 않고 새 문장으로 짧게 다시 쓴다. 기자의 의견·분석은 가져오지 않는다.
+- 중립적으로 쓴다. 조롱·비하·편 가르기·자극어("충격", "경악") 금지.
+- 참여 유도 문구("좋아요", "댓글", "공유", "팔로우") 금지.
+
+답 형식(항상 같은 순서):
+제목: 2~3줄, 줄당 12자 이내, 핵심어 1~2곳 [대괄호]
+작은 설명: 40자 이내
+캡션: ✔️ 요약 3~5줄 / 빈 줄 / 💡 배경 1~2줄
+해시태그: 5~8개
+확인할 점: 2~5개</pre>
+
+      <div class="phead"><h3 style="margin:0">3. 카드 배경용 AI 그림 (기사 사진 대신)</h3><button class="btn sm" type="button" data-copy="pBg">복사</button></div>
+      <pre class="prompt" id="pBg">가로 4:3 비율 이미지를 만들어줘. (레드박스형은 4:5 세로)
+주제: (예: 해질녘 파리 대로를 걷는 시위대 / 부산 항구 수로의 상어와 작은 배 / 비 오는 서울 출근길)
+스타일: 1950년대 미국 잡지 광고 일러스트(구아슈 물감, 굵은 형태, 크림·토마토빨강·머스터드·청록, 옅은 하프톤 인쇄 질감)와 일본 로파이 애니메이션 배경화(공들인 풍경, 분홍·주황·보라 해질녘 하늘, 가로등·창문 불빛, 얇은 선화, 셀 채색 인물, 필름 질감)를 섞은 아주 디테일한 그림
+디테일: 앞(주인공 뒷모습)·중간(사건)·뒤(도시 풍경) 거리감, 젖은 바닥 반사, 전깃줄, 새, 작은 소품
+금지: 글자·숫자·간판 글씨·로고 넣지 않기, 실존 인물 닮게 그리지 않기</pre>
+      <p class="hint"><span class="op">Claude의 의견</span> 실제 정치인·연예인 얼굴을 AI로 만들지는 마세요. 가짜 사진으로 오해받아 계정 신뢰와 수익 자격을 함께 잃을 수 있습니다.</p>
+
+      <div class="phead"><h3 style="margin:0">4. 영상 속 AI 캐릭터 그림 (그대로)</h3><button class="btn sm" type="button" data-copy="pChar">복사</button></div>
+      <pre class="prompt" id="pChar">다람쥐. 9:16으로 이미지를 만들어줘. 귀엽게 만들어줘. 공원에서 도토리 들고 웃고 있는 장면으로 묘사해줘.</pre>
+      <p class="hint">바꿔 쓰기 예시 <span class="op">Claude의 의견</span>: "고양이 요리사. 9:16. 따뜻하게. 작은 부엌에서 계란말이를 뒤집으며 뿌듯해하는 장면" / "펭귄 기상캐스터. 9:16. 귀엽게. 눈 오는 날씨 지도 앞에서 우산을 들고 있는 장면"</p>
+
+      <div class="phead"><h3 style="margin:0">5. Grok 영상 만들기 (그대로)</h3><button class="btn sm" type="button" data-copy="pVid">복사</button></div>
+      <pre class="prompt" id="pVid">(만든 그림을 첨부한 뒤)
+해당 이미지 영상으로 만들어줘.
+특징: 다람쥐가 웃고 있어.
+대사: "나는 다람쥐야. 도토리가 너무 맛있어. 히히. 기분 좋아."</pre>
+    </section>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+  const $ = (s) => document.querySelector(s);
+  const W = 1080;
+  const cv = $('#cv'), ctx = cv.getContext('2d');
+  const state = { tpl:'E', ratio:'45', font:'bhs', bgC:'#131A2A', img:null, zoom:1, ox:0, oy:0, cover:{maxX:0,maxY:0} };
+
+  /* ---------- tabs ---------- */
+  const TABS = ['make','guide','check','prompts'];
+  function showTab(t){
+    if(!TABS.includes(t)) t = 'make';
+    document.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+    TABS.forEach(x => { document.getElementById('tab-' + x).hidden = x !== t; });
+    try{ history.replaceState(null, '', '#' + t); }catch(e){}
+    if(t === 'make') scheduleRender();
+  }
+  document.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => { showTab(b.dataset.tab); window.scrollTo({top:0}); }));
+
+  /* ---------- toast & copy ---------- */
+  let toastT;
+  function toast(msg){ const el = $('#toast'); el.textContent = msg; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 2200); }
+  function copyText(txt){
+    const done = () => toast('복사했어요');
+    const fail = () => { const ta = $('#copyFallback'); ta.value = txt; ta.hidden = false; ta.focus(); ta.select(); toast('선택된 글을 길게 눌러 복사하세요'); };
+    try{
+      const p = navigator.clipboard && navigator.clipboard.writeText(txt);
+      if(p) p.then(done, fail); else fail();
+    }catch(e){ fail(); }
+  }
+  document.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => copyText(document.getElementById(b.dataset.copy).textContent)));
+
+  /* ---------- example image ---------- */
+  function makeExample(){
+    const c = document.createElement('canvas'); c.width = 1200; c.height = 900;
+    const g = c.getContext('2d');
+    const bg = g.createLinearGradient(0,0,1200,900); bg.addColorStop(0,'#2A3E7A'); bg.addColorStop(1,'#0D1328');
+    g.fillStyle = bg; g.fillRect(0,0,1200,900);
+    const dots = [[150,160,120,'#4E6BD6'],[1040,140,160,'#3550B0'],[980,760,200,'#22356F'],[230,780,140,'#3C57B8'],[600,90,70,'#6C86E8']];
+    dots.forEach(([x,y,r,col]) => { g.globalAlpha = .35; g.fillStyle = col; g.beginPath(); g.arc(x,y,r,0,Math.PI*2); g.fill(); });
+    g.globalAlpha = 1;
+    // phone
+    g.save(); g.translate(600,470); g.rotate(-0.08);
+    rr(g,-190,-340,380,680,46); g.fillStyle = '#F4F6FB'; g.fill();
+    rr(g,-170,-300,340,600,26); g.fillStyle = '#E3E8F2'; g.fill();
+    const cols = ['#C9D3E8','#FFD400','#B9C6E2','#D6DEEE','#AEBBDB','#C9D3E8','#B9C6E2','#D6DEEE','#AEBBDB'];
+    for(let i=0;i<9;i++){ const cx = -160 + (i%3)*108, cy = -200 + Math.floor(i/3)*108; g.fillStyle = cols[i]; g.fillRect(cx,cy,102,102); }
+    g.fillStyle = '#131A2A'; g.font = '900 30px "Noto Sans KR", sans-serif'; g.fillText('₩  $', -150, -240);
+    // heart on yellow tile
+    g.fillStyle = '#C62828'; g.beginPath(); const hx = -52+51, hy = -200+56;
+    g.moveTo(hx,hy+22); g.bezierCurveTo(hx-40,hy-6,hx-18,hy-34,hx,hy-12); g.bezierCurveTo(hx+18,hy-34,hx+40,hy-6,hx,hy+22); g.fill();
+    g.restore();
+    return c;
+  }
+  function rr(g,x,y,w,h,r){ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); }
+  state.img = makeExample();
+
+  /* ---------- text layout ---------- */
+  const FONT = { bhs: s => `400 ${s}px "Black Han Sans", "Noto Sans KR", sans-serif`, noto: s => `900 ${s}px "Noto Sans KR", sans-serif` };
+  const SUBF = s => `500 ${s}px "Noto Sans KR", sans-serif`;
+  const DFONT = s => `800 ${s}px "Noto Sans KR", sans-serif`;
+  const BOLDF = s => `700 ${s}px "Noto Sans KR", sans-serif`;
+  function parseHL(str){
+    return String(str || '').split('\n').map(line => {
+      const segs = []; let hl = false, buf = '';
+      for(const ch of line){
+        if(ch === '['){ if(buf) segs.push({t:buf,hl}); buf=''; hl = true; }
+        else if(ch === ']'){ if(buf) segs.push({t:buf,hl}); buf=''; hl = false; }
+        else buf += ch;
+      }
+      if(buf) segs.push({t:buf,hl});
+      return segs;
+    }).filter(l => l.some(s => s.t.trim()));
+  }
+  function layout(lines, fontFn, size, maxW){
+    ctx.font = fontFn(size);
+    const m = t => ctx.measureText(t).width;
+    const out = [];
+    for(const segs of lines){
+      const toks = [];
+      segs.forEach(s => s.t.split(/(\s+)/).forEach(p => { if(p) toks.push({t:p, hl:s.hl, sp:/^\s+$/.test(p)}); }));
+      let cur = [], w = 0;
+      const flush = () => { while(cur.length && cur[cur.length-1].sp) cur.pop(); if(cur.length) out.push(cur); cur = []; w = 0; };
+      for(const tk of toks){
+        if(tk.sp){ if(cur.length){ tk.t = ' '; cur.push(tk); w += m(' '); } continue; }
+        const tw = m(tk.t);
+        if(cur.length && w + tw > maxW) flush();
+        if(tw > maxW){
+          let piece = '';
+          for(const ch of tk.t){
+            if(piece && m(piece + ch) > maxW){ cur.push({t:piece, hl:tk.hl}); flush(); piece = ch; }
+            else piece += ch;
+          }
+          cur.push({t:piece, hl:tk.hl}); w = m(piece); continue;
+        }
+        cur.push(tk); w += tw;
+      }
+      flush();
+    }
+    return out;
+  }
+  function fit(str, fontFn, maxW, maxH, maxS, minS, lh, maxLines, keepLines){
+    const lines = parseHL(str);
+    // keepLines: shrink before wrapping, so each typed line stays one line when possible
+    for(const strict of keepLines ? [true, false] : [false]){
+      for(let s = maxS; s >= minS; s -= 4){
+        const L = layout(lines, fontFn, s, maxW);
+        if(strict && L.length > lines.length) continue;
+        if(L.length <= maxLines && L.length * s * lh <= maxH) return {size:s, lines:L, lh, fontFn};
+      }
+    }
+    return {size:minS, lines:layout(lines, fontFn, minS, maxW).slice(0, maxLines), lh, fontFn};
+  }
+  function blockH(f){ return f.lines.length ? f.lines.length * f.size * f.lh : 0; }
+  function drawFit(f, x, y, color, hlColor, mode, markerText){
+    ctx.font = f.fontFn(f.size); ctx.textBaseline = 'alphabetic';
+    f.lines.forEach((line, i) => {
+      const base = y + f.size * 0.9 + i * f.size * f.lh;
+      let xx = x;
+      line.forEach(tk => {
+        const tw = ctx.measureText(tk.t).width;
+        if(tk.hl && mode === 'box'){
+          ctx.save(); ctx.shadowColor = 'transparent'; ctx.fillStyle = hlColor;
+          ctx.fillRect(xx - 6, base - f.size * 0.86, tw + 12, f.size * 1.06); ctx.restore();
+          ctx.fillStyle = markerText;
+        } else ctx.fillStyle = tk.hl ? hlColor : color;
+        ctx.fillText(tk.t, xx, base);
+        xx += tw;
+      });
+    });
+  }
+  function ellipsize(text, maxW){
+    if(ctx.measureText(text).width <= maxW) return text;
+    let t = text; while(t.length > 1 && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1);
+    return t + '…';
+  }
+  function drawCover(img, x, y, w, h){
+    const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    const s = Math.max(w/iw, h/ih) * state.zoom;
+    const dw = iw*s, dh = ih*s, maxX = (dw-w)/2, maxY = (dh-h)/2;
+    state.cover = {maxX, maxY};
+    ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
+    ctx.drawImage(img, x + (w-dw)/2 + state.ox*maxX, y + (h-dh)/2 + state.oy*maxY, dw, dh);
+    ctx.restore();
+  }
+  function handlePill(x, y, dark){
+    const t = $('#fHandle').value.trim(); if(!t) return;
+    ctx.font = BOLDF(30); const tw = Math.min(ctx.measureText(t).width, 560);
+    rr(ctx, x, y, tw + 40, 56, 28); ctx.fillStyle = dark ? 'rgba(0,0,0,.55)' : 'rgba(255,255,255,.16)'; ctx.fill();
+    ctx.fillStyle = '#FFFFFF'; ctx.textBaseline = 'middle'; ctx.fillText(ellipsize(t, 560), x + 20, y + 29); ctx.textBaseline = 'alphabetic';
+  }
+  function labelPill(x, y, bg, fg){
+    const t = $('#fLabel').value.trim(); if(!t) return 0;
+    ctx.font = `900 38px "Noto Sans KR", sans-serif`; const tw = ctx.measureText(t).width;
+    rr(ctx, x, y, tw + 44, 64, 10); ctx.fillStyle = bg; ctx.fill();
+    ctx.fillStyle = fg; ctx.textBaseline = 'middle'; ctx.fillText(t, x + 22, y + 34); ctx.textBaseline = 'alphabetic';
+    return 64;
+  }
+  function footerText(){ return [$('#fSource').value.trim(), $('#fCredit').value.trim()].filter(Boolean).join('  ·  '); }
+  function subFit(maxW){ const s = $('#fSub').value.trim().replace(/[\[\]]/g,''); return s ? fit(s, SUBF, maxW, 9999, 38, 38, 1.35, 2) : {lines:[], size:38, lh:1.35, fontFn:SUBF}; }
+
+  function drawA(H){
+    const P = Math.round(H * 0.55);
+    ctx.fillStyle = '#0B0B0D'; ctx.fillRect(0,0,W,H);
+    if(state.img) drawCover(state.img, 0, 0, W, P);
+    else { ctx.fillStyle = '#1A1F2B'; ctx.fillRect(0,0,W,P); }
+    const g = ctx.createLinearGradient(0, P-280, 0, P); g.addColorStop(0,'rgba(11,11,13,0)'); g.addColorStop(1,'rgba(11,11,13,1)');
+    ctx.fillStyle = g; ctx.fillRect(0, P-280, W, 280);
+    handlePill(44, 44, true);
+    const lh = labelPill(60, P - 64, '#E5372B', '#FFFFFF');
+    const top = P + (lh ? 26 : -10);
+    const sf = subFit(W-120), sh = blockH(sf);
+    const avail = H - 120 - top - (sh ? sh + 22 : 0);
+    const f = fit($('#fHeadline').value, FONT[state.font], W-120, avail, H > 1100 ? 108 : 96, 48, 1.16, 4);
+    drawFit(f, 60, top, '#FFFFFF', '#FFD400', 'text');
+    if(sh) drawFit(sf, 60, top + blockH(f) + 18, '#C9CED6', '#C9CED6', 'text');
+    ctx.fillStyle = 'rgba(255,255,255,.16)'; ctx.fillRect(60, H - 92, W - 120, 2);
+    ctx.font = SUBF(26); ctx.fillStyle = '#8E95A1'; ctx.fillText(ellipsize(footerText(), W-120), 60, H - 48);
+  }
+  function drawB(H){
+    ctx.fillStyle = '#111317'; ctx.fillRect(0,0,W,H);
+    if(state.img) drawCover(state.img, 0, 0, W, H);
+    const g = ctx.createLinearGradient(0, H*0.3, 0, H); g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(.55,'rgba(0,0,0,.72)'); g.addColorStop(1,'rgba(0,0,0,.92)');
+    ctx.fillStyle = g; ctx.fillRect(0, H*0.3, W, H*0.7);
+    handlePill(44, 44, true);
+    const sf = subFit(W-120), sh = blockH(sf);
+    const f = fit($('#fHeadline').value, FONT[state.font], W-120, H*0.36, H > 1100 ? 108 : 96, 48, 1.16, 4);
+    const bottom = H - 120;
+    const subTop = bottom - sh;
+    const headTop = subTop - (sh ? 20 : 0) - blockH(f);
+    const hasLabel = $('#fLabel').value.trim();
+    if(hasLabel) labelPill(60, headTop - 88, '#FFD400', '#131A2A');
+    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 14;
+    drawFit(f, 60, headTop, '#FFFFFF', '#FFD400', 'text');
+    if(sh) drawFit(sf, 60, subTop, '#D8DCE3', '#D8DCE3', 'text');
+    ctx.restore();
+    ctx.font = SUBF(26); ctx.fillStyle = 'rgba(255,255,255,.62)'; ctx.fillText(ellipsize(footerText(), W-120), 60, H - 52);
+  }
+  // Vintage ad layout: cream paper, framed illustration, starburst label, serif headline with red ribbon, script brand
+  const V = { paper: '#F2E6CB', ink: '#2B1D14', red: '#C8352B', mustard: '#E3A72F' };
+  const SERIF = s => `900 ${s}px "Hahmlet", "Noto Serif KR", serif`;
+  let grainCache = null, dotPattern = null;
+  function paperGrain(H){
+    if(!grainCache || grainCache.height !== H){
+      const g = document.createElement('canvas'); g.width = W; g.height = H; const x = g.getContext('2d');
+      let seed = 11; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+      for(let i = 0; i < 4200; i++){ x.fillStyle = `rgba(90,60,30,${.03 + rnd() * .07})`; x.fillRect(rnd() * W, rnd() * H, 1 + rnd() * 2.2, 1 + rnd() * 2.2); }
+      const v = x.createRadialGradient(W / 2, H / 2, H * .35, W / 2, H / 2, H * .75);
+      v.addColorStop(0, 'rgba(120,80,40,0)'); v.addColorStop(1, 'rgba(120,80,40,.22)');
+      x.fillStyle = v; x.fillRect(0, 0, W, H);
+      grainCache = g;
+    }
+    ctx.drawImage(grainCache, 0, 0);
+  }
+  function halftone(x0, y0, w, h){
+    if(!dotPattern){
+      const p = document.createElement('canvas'); p.width = p.height = 7; const px = p.getContext('2d');
+      px.fillStyle = '#5A3A1E'; px.beginPath(); px.arc(3.5, 3.5, 1.5, 0, 7); px.fill();
+      dotPattern = ctx.createPattern(p, 'repeat');
+    }
+    ctx.save(); ctx.globalAlpha = .08; ctx.fillStyle = dotPattern; ctx.fillRect(x0, y0, w, h);
+    ctx.globalAlpha = .05; ctx.fillStyle = V.paper; ctx.fillRect(x0, y0, w, h); ctx.restore();
+  }
+  function starburst(cx, cy, r, n, fill){
+    ctx.beginPath();
+    for(let i = 0; i < n * 2; i++){ const a = Math.PI * i / n - Math.PI / 2, rad = i % 2 ? r * .8 : r; ctx.lineTo(cx + Math.cos(a) * rad, cy + Math.sin(a) * rad); }
+    ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+  }
+  function ribbon(x0, y, w, h){
+    const n = h * .32;
+    ctx.beginPath(); ctx.moveTo(x0 - n, y); ctx.lineTo(x0 + w + n, y); ctx.lineTo(x0 + w, y + h / 2); ctx.lineTo(x0 + w + n, y + h);
+    ctx.lineTo(x0 - n, y + h); ctx.lineTo(x0, y + h / 2); ctx.closePath(); ctx.fill();
+  }
+  function drawVintageHL(f, x, y){
+    ctx.font = f.fontFn(f.size); ctx.textBaseline = 'alphabetic';
+    f.lines.forEach((line, i) => {
+      const base = y + f.size * .9 + i * f.size * f.lh;
+      const runs = []; let xx = x, start = null;
+      line.forEach(tk => {
+        if(tk.hl && start === null) start = xx;
+        if(!tk.hl && start !== null){ runs.push([start, xx]); start = null; }
+        xx += ctx.measureText(tk.t).width;
+      });
+      if(start !== null) runs.push([start, xx]);
+      ctx.fillStyle = V.red;
+      runs.forEach(([a, b]) => ribbon(a - 14, base - f.size * .92, b - a + 28, f.size * 1.18));
+      xx = x;
+      line.forEach(tk => { ctx.fillStyle = tk.hl ? V.paper : V.ink; ctx.fillText(tk.t, xx, base); xx += ctx.measureText(tk.t).width; });
+    });
+  }
+  function drawE(H){
+    ctx.fillStyle = V.paper; ctx.fillRect(0, 0, W, H);
+    paperGrain(H);
+    ctx.strokeStyle = V.ink; ctx.lineWidth = 4; ctx.strokeRect(34, 34, W - 68, H - 68);
+    ctx.lineWidth = 1.5; ctx.strokeRect(46, 46, W - 92, H - 92);
+    const brand = $('#fBrand').value.trim();
+    ctx.fillStyle = V.ink; ctx.font = '700 24px "Hahmlet", serif'; setTracking(4);
+    ctx.fillText(ellipsize((brand || 'PRIAMOS').toUpperCase() + ' · DAILY ISSUE', 560), 82, 92);
+    const d = new Date(); ctx.textAlign = 'right';
+    ctx.fillText(`${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}.`, W - 82, 92);
+    ctx.textAlign = 'left'; setTracking(0);
+    ctx.fillRect(82, 108, W - 164, 3);
+    const fx = 82, fy = 132, fw = W - 164, fh = Math.round(H * (H > 1100 ? .47 : .42));
+    ctx.save(); rr(ctx, fx, fy, fw, fh, 16); ctx.clip();
+    if(state.img){ ctx.filter = 'sepia(.12) saturate(1.04) contrast(1.03)'; drawCover(state.img, fx, fy, fw, fh); ctx.filter = 'none'; }
+    else { ctx.fillStyle = V.mustard; ctx.fillRect(fx, fy, fw, fh); }
+    halftone(fx, fy, fw, fh);
+    ctx.restore();
+    ctx.strokeStyle = V.ink; ctx.lineWidth = 4; rr(ctx, fx, fy, fw, fh, 16); ctx.stroke();
+    const label = $('#fLabel').value.trim();
+    if(label){
+      const bx = fx + fw - 64, by = fy + 62;
+      starburst(bx, by, 86, 14, V.red);
+      ctx.save(); ctx.translate(bx, by); ctx.rotate(-.18); ctx.fillStyle = V.paper;
+      ctx.font = SERIF(label.length > 2 ? 30 : 38); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(label, 0, 2); ctx.restore();
+    }
+    const footTop = H - 170, areaTop = fy + fh + 40;
+    const sub = $('#fSub').value.trim().replace(/[\[\]]/g, '');
+    const subH = sub ? 54 : 0;
+    const f = fit($('#fHeadline').value, SERIF, W - 280, footTop - areaTop - subH - 30, 92, 46, 1.32, 4, true);
+    const top = areaTop + Math.max(0, (footTop - areaTop - blockH(f) - subH) / 2) - 6;
+    drawVintageHL(f, 110, top);
+    if(sub){ ctx.font = '500 32px "Hahmlet", serif'; ctx.fillStyle = V.ink; ctx.globalAlpha = .8; ctx.fillText(ellipsize(sub, W - 220), 110, top + blockH(f) + 40); ctx.globalAlpha = 1; }
+    ctx.fillStyle = V.ink; ctx.fillRect(82, footTop + 6, W - 164, 1.5);
+    const script = brand ? brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase() : '';
+    if(script){ ctx.font = '400 66px "Yellowtail", cursive'; ctx.fillStyle = V.red; ctx.fillText(ellipsize(script, 440), 92, H - 74); }
+    ctx.textAlign = 'right'; ctx.fillStyle = V.ink;
+    const hd = $('#fHandle').value.trim();
+    if(hd){ ctx.font = '700 24px "Hahmlet", serif'; ctx.fillText(ellipsize(hd, 420), W - 96, H - 122); }
+    ctx.font = '500 20px "Hahmlet", serif'; ctx.globalAlpha = .75;
+    const src = $('#fSource').value.trim(), cr = $('#fCredit').value.trim();
+    if(src) ctx.fillText(ellipsize(src, 440), W - 96, H - 92);
+    if(cr) ctx.fillText(ellipsize(cr, 440), W - 96, H - 64);
+    ctx.globalAlpha = 1; ctx.textAlign = 'left';
+  }
+  // Red-box layout: full-bleed photo, dark bottom, brand mark, white line + red-boxed punchline
+  function setTracking(px){ try{ ctx.letterSpacing = px + 'px'; }catch(e){} }
+  function drawD(H){
+    ctx.fillStyle = '#16100E'; ctx.fillRect(0,0,W,H);
+    if(state.img) drawCover(state.img, 0, 0, W, H);
+    const top = H * 0.42;
+    const g = ctx.createLinearGradient(0, top, 0, H);
+    g.addColorStop(0, 'rgba(22,16,14,0)'); g.addColorStop(.38, 'rgba(22,16,14,.9)'); g.addColorStop(.6, '#16100E'); g.addColorStop(1, '#16100E');
+    ctx.fillStyle = g; ctx.fillRect(0, top, W, H - top);
+    const X = 120, maxW = W - X - 70;
+    setTracking(-1.5);
+    const f = fit($('#fHeadline').value, DFONT, maxW, H * 0.25, 78, 42, 1.3, 4, true);
+    setTracking(0);
+    const handleY = H - 165;
+    const headTop = handleY - 54 - blockH(f);
+    const brand = $('#fBrand').value.trim();
+    if(brand){
+      const by = headTop - 20;
+      ctx.fillStyle = '#0A0A0A'; ctx.fillRect(X - 12, by - 46, 22, 22);
+      ctx.font = '400 40px "Anton", "Black Han Sans", sans-serif'; ctx.fillStyle = '#E3141B';
+      ctx.fillText(ellipsize(brand.toUpperCase(), maxW), X, by);
+    }
+    setTracking(-1.5);
+    drawFit(f, X, headTop, '#FFFFFF', '#E3141B', 'box', '#FFFFFF');
+    setTracking(0);
+    const hd = $('#fHandle').value.trim();
+    ctx.font = SUBF(26); ctx.fillStyle = 'rgba(255,255,255,.72)';
+    const hw = hd ? Math.min(ctx.measureText(hd).width, 400) : 0;
+    if(hd) ctx.fillText(ellipsize(hd, 400), X, handleY);
+    const ft = footerText();
+    if(ft){
+      ctx.font = SUBF(21); ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.textAlign = 'right';
+      ctx.fillText(ellipsize(ft, W - 70 - X - hw - 40), W - 70, handleY); ctx.textAlign = 'left';
+    }
+  }
+  function lum(hex){ const n = parseInt(hex.slice(1),16); const r=(n>>16)&255, g=(n>>8)&255, b=n&255; return (0.299*r + 0.587*g + 0.114*b)/255; }
+  function drawC(H){
+    const bg = state.bgC, light = lum(bg) > .6, isYellow = bg.toUpperCase() === '#FFD400';
+    const fg = light ? '#131A2A' : '#FFFFFF';
+    const mk = isYellow ? '#131A2A' : '#FFD400', mkText = isYellow ? '#FFD400' : '#131A2A';
+    ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+    // handle (dark pill on light backgrounds keeps white text readable)
+    const t = $('#fHandle').value.trim();
+    if(t){ ctx.font = BOLDF(30); const tw = Math.min(ctx.measureText(t).width, 560); rr(ctx, 60, 60, tw + 40, 56, 28); ctx.fillStyle = light ? 'rgba(19,26,42,.9)' : 'rgba(255,255,255,.16)'; ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.textBaseline='middle'; ctx.fillText(ellipsize(t,560), 80, 89); ctx.textBaseline='alphabetic'; }
+    const label = $('#fLabel').value.trim();
+    let top = 190;
+    if(label){ ctx.font = `900 44px "Noto Sans KR", sans-serif`; ctx.fillStyle = fg; ctx.fillText(label, 80, top + 40); ctx.fillStyle = fg; ctx.fillRect(80, top + 66, 120, 8); top += 110; }
+    const sf = subFit(W-160), sh = blockH(sf);
+    const maxH = H - top - 150 - (sh ? sh + 30 : 0);
+    const f = fit($('#fHeadline').value, FONT[state.font], W-160, maxH, H > 1100 ? 124 : 108, 52, 1.22, 5);
+    const used = blockH(f) + (sh ? sh + 30 : 0);
+    const start = top + Math.max(0, (H - top - 150 - used) / 2);
+    drawFit(f, 80, start, fg, mk, 'box', mkText);
+    if(sh) drawFit(sf, 80, start + blockH(f) + 30, light ? '#3A4357' : 'rgba(255,255,255,.8)', '', 'text');
+    ctx.fillStyle = light ? 'rgba(19,26,42,.18)' : 'rgba(255,255,255,.2)'; ctx.fillRect(80, H - 100, W - 160, 2);
+    ctx.font = SUBF(26); ctx.fillStyle = light ? '#4D586E' : 'rgba(255,255,255,.65)'; ctx.fillText(ellipsize(footerText(), W-160), 80, H - 54);
+  }
+
+  /* ---------- render loop ---------- */
+  let pending = false, renderId = 0;
+  async function ensureFonts(){
+    if(!document.fonts || !document.fonts.load) return;
+    const txt = [$('#fHeadline').value, $('#fSub').value, $('#fLabel').value, $('#fHandle').value, footerText(), '₩$0123456789'].join(' ');
+    try{
+      await Promise.all([
+        document.fonts.load('400 40px "Anton"', $('#fBrand').value.toUpperCase() || 'A'),
+        document.fonts.load('800 70px "Noto Sans KR"', txt),
+        document.fonts.load('900 80px "Hahmlet"', txt),
+        document.fonts.load('700 24px "Hahmlet"', txt + 'DAILY ISSUE'),
+        document.fonts.load('500 30px "Hahmlet"', txt),
+        document.fonts.load('400 64px "Yellowtail"', $('#fBrand').value || 'P'),
+        document.fonts.load('400 80px "Black Han Sans"', txt),
+        document.fonts.load('900 80px "Noto Sans KR"', txt),
+        document.fonts.load('700 30px "Noto Sans KR"', txt),
+        document.fonts.load('500 30px "Noto Sans KR"', txt)
+      ]);
+    }catch(e){}
+  }
+  async function render(){
+    const id = ++renderId;
+    await ensureFonts();
+    if(id !== renderId) return;
+    const H = state.ratio === '45' ? 1350 : 1080;
+    if(cv.height !== H) cv.height = H;
+    ctx.clearRect(0,0,W,H);
+    if(state.tpl === 'E') drawE(H); else if(state.tpl === 'D') drawD(H); else if(state.tpl === 'A') drawA(H); else if(state.tpl === 'B') drawB(H); else drawC(H);
+  }
+  function scheduleRender(){ if(pending) return; pending = true; requestAnimationFrame(() => { pending = false; render(); }); }
+  ['fHeadline','fSub','fLabel','fHandle','fBrand','fSource','fCredit'].forEach(id => document.getElementById(id).addEventListener('input', scheduleRender));
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleRender);
+
+  /* ---------- controls ---------- */
+  function segInit(id, key, after){
+    const seg = document.getElementById(id);
+    seg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      seg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      state[key] = b.dataset.v; if(after) after(); scheduleRender();
+    }));
+  }
+  segInit('tplSeg', 'tpl', () => { $('#bgRow').hidden = state.tpl !== 'C'; });
+  segInit('ratioSeg', 'ratio');
+  segInit('fontSeg', 'font');
+  $('#swatches').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    $('#swatches').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    state.bgC = b.dataset.c; scheduleRender();
+  }));
+  $('#labelChips').querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => { $('#fLabel').value = c.textContent; scheduleRender(); }));
+  $('#creditChips').querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => { $('#fCredit').value = c.textContent; scheduleRender(); }));
+  function syncSliders(){ $('#zoom').value = Math.round(state.zoom*100); $('#offX').value = Math.round(state.ox*100); $('#offY').value = Math.round(state.oy*100); }
+  $('#zoom').addEventListener('input', e => { state.zoom = e.target.value/100; scheduleRender(); });
+  $('#offX').addEventListener('input', e => { state.ox = e.target.value/100; scheduleRender(); });
+  $('#offY').addEventListener('input', e => { state.oy = e.target.value/100; scheduleRender(); });
+
+  function loadFile(f){
+    if(!f || !/^image\//.test(f.type)) { toast('이미지 파일만 넣을 수 있어요'); return; }
+    const im = new Image();
+    im.onload = () => { state.img = im; state.zoom = 1; state.ox = 0; state.oy = 0; syncSliders(); if(/예시/.test($('#fCredit').value)) $('#fCredit').value = '사진: 직접 촬영'; scheduleRender(); toast('사진을 넣었어요'); };
+    im.onerror = () => toast('이 사진은 열 수 없어요. 다른 파일을 골라 주세요');
+    im.src = URL.createObjectURL(f);
+  }
+  $('#fileIn').addEventListener('change', e => loadFile(e.target.files && e.target.files[0]));
+  $('#btnNoImg').addEventListener('click', () => { state.img = null; scheduleRender(); });
+  $('#btnExample').addEventListener('click', () => { state.img = makeExample(); state.zoom = 1; state.ox = 0; state.oy = 0; syncSliders(); scheduleRender(); });
+  document.addEventListener('paste', e => {
+    const items = e.clipboardData ? Array.from(e.clipboardData.items) : [];
+    const it = items.find(i => i.type && i.type.indexOf('image/') === 0);
+    if(it){ e.preventDefault(); loadFile(it.getAsFile()); }
+  });
+  const box = $('#cvBox');
+  box.addEventListener('dragover', e => { e.preventDefault(); box.classList.add('drag'); });
+  box.addEventListener('dragleave', () => box.classList.remove('drag'));
+  box.addEventListener('drop', e => { e.preventDefault(); box.classList.remove('drag'); loadFile(e.dataTransfer.files && e.dataTransfer.files[0]); });
+  let drag = null;
+  cv.addEventListener('pointerdown', e => { if(!state.img || state.tpl === 'C') return; drag = {x:e.clientX, y:e.clientY}; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', e => {
+    if(!drag) return;
+    const k = W / cv.clientWidth, dx = (e.clientX - drag.x)*k, dy = (e.clientY - drag.y)*k;
+    drag = {x:e.clientX, y:e.clientY};
+    if(state.cover.maxX > 1) state.ox = Math.max(-1, Math.min(1, state.ox + dx/state.cover.maxX));
+    if(state.cover.maxY > 1) state.oy = Math.max(-1, Math.min(1, state.oy + dy/state.cover.maxY));
+    syncSliders(); scheduleRender();
+  });
+  ['pointerup','pointercancel'].forEach(t => cv.addEventListener(t, () => { drag = null; }));
+
+  /* ---------- AI writing ---------- */
+  let sample = null, ctl = null;
+  const C = window.claude;
+  (C && C.use ? C.use('sample') : Promise.resolve(null)).then(s => { sample = s; if(!s) noAI(); }).catch(noAI);
+  function noAI(){ sample = null; $('#altBox').open = true; setStatus('이 화면에서는 AI 자동 작성을 쓸 수 없어요. 아래 "ChatGPT로 하기"로 같은 결과를 얻을 수 있어요.', ''); }
+  function setStatus(msg, cls){ const el = $('#aiStatus'); el.textContent = msg; el.className = 'status' + (cls ? ' ' + cls : ''); }
+  function today(){ const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+  function buildPrompt(){
+    const press = $('#press').value.trim() || '언론사 미상';
+    const link = $('#newsLink').value.trim() || '없음';
+    const body = $('#newsText').value.trim().slice(0, 7000);
+    const body2 = $('#newsText2').value.trim().slice(0, 6000);
+    const two = body2.length >= 30;
+    return `너는 한국어 인스타그램 '카드뉴스' 편집자다. 아래 ${two ? '[기사 1]과 [기사 2](같은 사건을 다룬 서로 다른 언론사 기사)를 합쳐' : '[기사]로'} 카드 한 장짜리 원고를 만든다.
+
+지킬 규칙
+1. 기사에 있는 사실만 쓴다. 추측, 과장, 기사에 없는 내용은 쓰지 않는다. 이름·숫자·날짜·직함은 기사와 똑같이 쓴다.${two ? `
+1-1. 두 기사를 합친다. 두 기사에 공통으로 나온 사실을 뼈대로 삼고, 한쪽 기사에만 있는 숫자·발언·배경도 사실이면 보탠다. 두 기사의 시간·숫자가 서로 다르면 둘 다 맞는 넓은 표현(예: '새벽')을 쓰고 checks에 warn으로 적는다. 어느 기사의 문장도 그대로 옮기지 않는다.` : ''}
+2. 기사 문장을 그대로 옮기지 않는다. 사실만 뽑아 짧은 새 문장으로 다시 쓴다. 기자의 의견·분석·비유 표현은 가져오지 않는다.
+3. 정치·사회 이슈는 중립적으로 쓴다. 특정 인물이나 집단을 조롱·비하하거나 편을 가르는 표현, 분노를 부추기는 낚시 표현은 쓰지 않는다.
+4. "좋아요", "댓글 달아", "공유", "팔로우하면" 같은 참여 유도 문구는 절대 쓰지 않는다.
+5. caption 형식(인스타그램 뉴스 계정 스타일):
+   - 첫 줄: 주제 이모지 1개(사건·사고 🚨, 논란·이슈 💥, 돈·경제 💵, IT·과학 🤖, 국제 🌍, 연예 🎬, 생활 🏠) 바로 뒤에 제목 한 줄. 카드 제목과 다른 표현으로, 35자 이내.
+   - 빈 줄 하나.
+   - 본문 4~8문장. 한 문장마다 줄바꿈(문장 사이에 빈 줄 없음). "~습니다/했습니다"체. 누가·언제·어디서·무엇을 순서로 사실만 쓰고, 마지막 문장은 기사에 나온 배경이나 앞으로의 일정.
+   - 출처 줄이나 언론사 이름은 쓰지 않는다(본문에서 '경찰에 따르면'처럼 정보의 출처 기관을 밝히는 건 괜찮다).
+6. headline: 카드 제목 2줄, 줄바꿈은 \\n. 첫 줄은 상황 설명, 둘째 줄은 핵심 결과이며 둘째 줄 전체를 [대괄호]로 감싼다(빨간 상자로 표시됨). 한 줄 18자 이내. 예: "새벽에 남의 차 뒤지던 10대\\n[들키자 차주까지 폭행했다]". "충격", "경악" 같은 자극어와 물음표 남발은 쓰지 않는다.
+7. sub: 제목 아래 작은 설명 1줄, 40자 이내.
+8. label: 2~4자 분류 (속보, 정치, 사회, 경제, 연예, 국제, 생활, IT 중 하나).
+9. hashtags: 5~8개, 각각 #으로 시작, 띄어쓰기 없음. 지역·주제 태그와 #이슈 #속보를 포함.
+10. imagePrompt: 카드에 넣을 AI 그림 설명 3~5문장(한국어). 스타일은 '1950년대 미국 잡지 광고 일러스트(구아슈 물감, 굵고 자신 있는 형태, 크림·토마토빨강·머스터드·청록 색감, 옅은 하프톤 인쇄 질감) + 일본 로파이 애니메이션 배경화(공들여 그린 풍경, 분홍·주황·보라 해질녘 하늘, 켜진 가로등과 창문 불빛, 얇고 깨끗한 선화, 셀 채색 인물, 옅은 필름 질감, 아련한 분위기)'를 섞은 것. 기사 상황을 보여 주는 장면을 앞·중간·뒤 거리감과 작은 소품까지 자세히 묘사하고, 가로 4:3 비율, 글자·숫자·간판 글씨·로고 넣지 말 것. 사람은 그림 속 가상 인물로 그리고, 실존 인물(정치인·연예인 등)을 닮게 그리지 않는다.
+11. checks: 올리기 전 사람이 확인할 점 2~5개. level은 "ok" 또는 "warn". 꼭 따질 것: 원문과 다시 대조할 숫자·인명, 재판·판결·사고·사망·범죄처럼 인스타그램 수익이 줄 수 있는 주제인지, 기사 사진을 그대로 쓰면 저작권 문제가 생길 수 있다는 점, 인물 명예훼손 위험.
+
+출력: 아래 형태의 JSON 하나만. 다른 말은 쓰지 않는다.
+{"label":"","headline":"","sub":"","caption":"","hashtags":[""],"imagePrompt":"","checks":[{"level":"ok","text":""}]}
+
+[기사 정보]
+언론사: ${press}
+링크: ${link}
+오늘 날짜: ${today()}
+
+${two ? `[기사 1]
+${body}
+
+[기사 2]
+${body2}` : `[기사]
+${body}`}`;
+  }
+  function applyResult(d){
+    if(!d || typeof d !== 'object') throw new Error('shape');
+    const s = v => (typeof v === 'string' ? v : '').replace(/\\n/g, '\n').trim();
+    if(s(d.label)) $('#fLabel').value = s(d.label);
+    if(s(d.headline)) $('#fHeadline').value = s(d.headline);
+    if(typeof d.sub === 'string') $('#fSub').value = s(d.sub);
+    if(s(d.caption)) $('#fCaption').value = s(d.caption);
+    if(s(d.imagePrompt)) $('#fImgPrompt').value = s(d.imagePrompt);
+    if(Array.isArray(d.hashtags)) $('#fTags').value = d.hashtags.map(t => String(t).trim()).filter(Boolean).map(t => t[0] === '#' ? t : '#' + t).join(' ');
+    const list = $('#checks'); list.textContent = '';
+    (Array.isArray(d.checks) ? d.checks : []).slice(0, 6).forEach(c => {
+      const li = document.createElement('li');
+      const p = document.createElement('span'); const warn = c && c.level === 'warn';
+      p.className = 'pill ' + (warn ? 'warn' : 'ok'); p.textContent = warn ? '주의' : '확인';
+      const t = document.createElement('span'); t.textContent = c && c.text ? String(c.text) : '';
+      li.append(p, t); list.append(li);
+    });
+    scheduleRender();
+  }
+  const ERR = {
+    rate_limited: '요청이 많아 잠시 쉬어야 해요. 조금 뒤 다시 눌러 주세요.',
+    refused: 'AI가 이 기사로는 원고를 쓰지 않았어요. 다른 기사를 골라 보세요.',
+    invalid_json: '답의 형식이 어긋났어요. [다시 쓰기]를 눌러 주세요.',
+    prompt_too_large: '기사가 너무 길어요. 앞부분만 붙여 넣어 주세요.',
+    session_expired: 'Claude에 다시 로그인한 뒤 눌러 주세요.',
+    empty_completion: '답이 비어 있었어요. 기사 본문을 조금 더 붙여 넣어 주세요.'
+  };
+  const HIDE = ['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'];
+  async function runAI(fresh){
+    if($('#newsText').value.trim().length < 30){ setStatus('기사 본문을 30자 이상 붙여 넣어 주세요.', 'err'); return; }
+    if(!sample){ noAI(); return; }
+    ctl = new AbortController();
+    $('#btnAI').disabled = true; $('#btnAIAgain').hidden = true; $('#btnStop').hidden = false;
+    setStatus('AI가 원고를 쓰는 중이에요… 보통 10~40초 걸려요.', '');
+    try{
+      const opts = { signal: ctl.signal, onText: ({text}) => setStatus(`AI가 원고를 쓰는 중이에요… (${text.length}자)`, '') };
+      if(fresh) opts.cache = false;
+      const d = await sample.json(buildPrompt(), opts);
+      applyResult(d);
+      setStatus('완성했어요. 숫자·이름이 원문과 같은지만 확인하세요.', 'good');
+    }catch(e){
+      const code = e && e.code;
+      if(code === 'cancelled') setStatus('멈췄어요.', '');
+      else if(HIDE.includes(code)) { $('#btnAI').hidden = true; noAI(); }
+      else setStatus(ERR[code] || (code ? '연결이 잠시 끊겼어요. 다시 눌러 주세요.' : '답을 카드에 넣지 못했어요. [다시 쓰기]를 눌러 주세요.'), 'err');
+    }finally{
+      $('#btnAI').disabled = false; $('#btnStop').hidden = true; $('#btnAIAgain').hidden = !sample;
+    }
+  }
+  $('#btnAI').addEventListener('click', () => runAI(false));
+  $('#btnAIAgain').addEventListener('click', () => runAI(true));
+  $('#btnStop').addEventListener('click', () => { if(ctl) ctl.abort(); });
+  $('#btnClear').addEventListener('click', () => { $('#newsText').value = ''; $('#newsText2').value = ''; $('#newsLink').value = ''; $('#press').value = ''; $('#newsText').focus(); setStatus('', ''); });
+  $('#btnCopyPrompt').addEventListener('click', () => {
+    if($('#newsText').value.trim().length < 30){ setStatus('먼저 기사 본문을 붙여 넣어 주세요.', 'err'); return; }
+    copyText(buildPrompt());
+  });
+  $('#btnApply').addEventListener('click', () => {
+    let s = $('#pasteAnswer').value.trim(); if(!s){ toast('AI 답을 먼저 붙여 넣어 주세요'); return; }
+    const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/); if(fence) s = fence[1];
+    const a = s.indexOf('{'), b = s.lastIndexOf('}');
+    try{ applyResult(JSON.parse(s.slice(a, b + 1))); toast('카드에 적용했어요'); }
+    catch(e){ $('#fCaption').value = $('#pasteAnswer').value.trim(); toast('형식이 달라서 캡션 칸에만 넣었어요'); }
+  });
+
+  /* ---------- save & copy ---------- */
+  let downloads = null;
+  (C && C.use ? C.use('downloads') : Promise.resolve(null)).then(d => { downloads = d; }).catch(() => {});
+  function fileName(){ const d = new Date(); const q = loadQ().length + 1; return `card-${today().replace(/-/g,'')}-${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}-${q}.png`; }
+  function showFallbackImg(){ $('#fallImgEl').src = cv.toDataURL('image/png'); $('#fallImg').hidden = false; $('#fallImg').scrollIntoView({block:'nearest'}); }
+  $('#btnSave').addEventListener('click', async () => {
+    await render();
+    if(downloads){
+      const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+      try{ await downloads.save({ filename: fileName(), data: blob }); toast('이미지를 저장했어요'); $('#fallImg').hidden = true; return; }
+      catch(e){
+        if(e && e.code === 'declined'){ toast('저장을 취소했어요'); return; }
+        if(e && e.code === 'rate_limited'){ toast('저장 창이 이미 열려 있어요'); return; }
+      }
+    }
+    showFallbackImg();
+  });
+  function fullCaption(){ const c = $('#fCaption').value.trim(), t = $('#fTags').value.trim(); return t ? `${c}\n\n${t}` : c; }
+  $('#btnCopyCap').addEventListener('click', () => copyText(fullCaption()));
+  $('#btnCopyImgPrompt').addEventListener('click', () => {
+    const t = $('#fImgPrompt').value.trim();
+    if(!t){ toast('먼저 [AI로 자동 작성]을 눌러 주세요'); return; }
+    copyText(t + (state.tpl === 'E' ? '\n(가로 4:3, 글자 없이)' : '\n(4:5 세로, 글자 없이)'));
+  });
+
+  /* ---------- send to Claude (db rows point at uploaded card images) ---------- */
+  let db = null, assets = null, lastOb = null, obArmed = null;
+  const useCap = n => (C && C.use ? C.use(n) : Promise.resolve(null)).catch(() => null);
+  Promise.all([useCap('db'), useCap('assets')]).then(([d, a]) => { db = d; assets = a; initOutbox(); });
+  function setSend(msg, cls){ const el = $('#sendStatus'); el.textContent = msg; el.className = 'status' + (cls ? ' ' + cls : ''); }
+  function initOutbox(){
+    if(!db || !assets){
+      $('#btnSend').hidden = true; $('#obEmpty').hidden = true;
+      $('#obNote').textContent = '이 화면에서는 Claude에게 보내기를 쓸 수 없어요. claude.ai에 이 페이지 주인 계정으로 로그인해서 열어 주세요.';
+      return;
+    }
+    $('#btnSend').hidden = false;
+    db.collection('outbox').orderBy('createdAt', 'desc').limit(30).onSnapshot(
+      snap => { lastOb = snap; renderOutbox(); },
+      () => { $('#obNote').textContent = '보낸 카드 목록을 불러오지 못했어요. 페이지를 새로 고쳐 주세요.'; }
+    );
+  }
+  const OB_STATUS = { pending: ['대기 중', 'warn'], posted: ['올림', 'ok'], held: ['보류', 'bad'] };
+  function renderOutbox(){
+    if(!lastOb) return;
+    const ul = $('#obList'); ul.textContent = '';
+    const docs = lastOb.docs.filter(s => s.exists);
+    $('#obEmpty').hidden = docs.length > 0;
+    const pend = docs.filter(s => s.data().status === 'pending').length;
+    $('#obSummary').textContent = docs.length ? `보낸 카드 ${docs.length}개 · 대기 ${pend}개` : '';
+    docs.forEach(s => {
+      const d = s.data();
+      const li = document.createElement('li'); li.className = 'qitem';
+      const img = document.createElement('img'); img.alt = '';
+      if(typeof d.imageId === 'string') img.src = '/_blob/' + d.imageId;
+      const body = document.createElement('div');
+      const t = document.createElement('div'); t.className = 't';
+      t.textContent = String(d.headline || '').replace(/[\[\]]/g, '').replace(/\n/g, ' ').trim() || '(제목 없음)';
+      const r = document.createElement('div'); r.className = 'r';
+      const [lab, cls] = OB_STATUS[d.status] || ['확인 중', 'unk'];
+      const pill = document.createElement('span'); pill.className = 'pill ' + cls; pill.textContent = lab;
+      const when = document.createElement('span'); when.className = 'hint'; when.style.margin = '0';
+      const dt = new Date(d.createdAt);
+      if(!isNaN(dt)) when.textContent = dt.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      r.append(pill, when);
+      if(typeof d.permalink === 'string' && /^https:\/\/www\.instagram\.com\//.test(d.permalink)){
+        const a = document.createElement('a'); a.href = d.permalink; a.target = '_blank'; a.rel = 'noopener'; a.textContent = '게시물 보기'; r.append(a);
+      }
+      if(d.status === 'pending'){
+        const x = document.createElement('button'); x.type = 'button'; x.className = 'btn sm ghost';
+        x.textContent = obArmed === s.id ? '한 번 더 누르면 취소' : '보내기 취소';
+        x.addEventListener('click', () => cancelOutbox(s.id, d.imageId));
+        r.append(x);
+      }
+      body.append(t, r);
+      if(d.note){ const n = document.createElement('p'); n.className = 'hint'; n.textContent = String(d.note); body.append(n); }
+      li.append(img, body); ul.append(li);
+    });
+  }
+  async function cancelOutbox(id, imageId){
+    if(obArmed !== id){
+      obArmed = id; renderOutbox();
+      setTimeout(() => { if(obArmed === id){ obArmed = null; renderOutbox(); } }, 3000);
+      return;
+    }
+    obArmed = null;
+    try{
+      await db.collection('outbox').doc(id).delete();
+      if(typeof imageId === 'string') await assets.delete(imageId).catch(() => {});
+      toast('보내기를 취소했어요');
+    }catch(e){ toast('취소하지 못했어요. 잠시 후 다시 눌러 주세요'); }
+  }
+  const SEND_ERR = {
+    too_large: '이미지가 너무 커요. 사진을 더 작은 파일로 바꿔 주세요.',
+    quota_or_state: '저장 공간이 가득 찼어요. 오래된 카드를 취소해 주세요.',
+    quota_exceeded: '저장 공간이 가득 찼어요. 오래된 카드를 취소해 주세요.',
+    rate_limited: '너무 자주 눌렀어요. 잠시 후 다시 눌러 주세요.',
+    resource_exhausted: '너무 자주 눌렀어요. 잠시 후 다시 눌러 주세요.',
+    upstream_auth: 'claude.ai에 다시 로그인한 뒤 눌러 주세요.'
+  };
+  $('#btnSend').addEventListener('click', async () => {
+    if(!db || !assets) return;
+    if(!$('#fHeadline').value.trim() || !$('#fCaption').value.trim()){ setSend('제목과 캡션을 먼저 채워 주세요.', 'err'); return; }
+    const btn = $('#btnSend'); btn.disabled = true; setSend('보내는 중이에요…', '');
+    try{
+      await render();
+      const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.92));
+      const up = await assets.upload(blob, { type: 'image/jpeg' });
+      await db.collection('outbox').doc().set({
+        status: 'pending', createdAt: new Date().toISOString(), imageId: up.id,
+        label: $('#fLabel').value.trim(), headline: $('#fHeadline').value, sub: $('#fSub').value.trim(),
+        caption: $('#fCaption').value.trim(), hashtags: $('#fTags').value.trim(),
+        handle: $('#fHandle').value.trim(), brand: $('#fBrand').value.trim(), imagePrompt: $('#fImgPrompt').value.trim(), source: $('#fSource').value.trim(), credit: $('#fCredit').value.trim(),
+        press: $('#press').value.trim(), link: $('#newsLink').value.trim(), newsText: $('#newsText').value.trim().slice(0, 8000), newsText2: $('#newsText2').value.trim().slice(0, 6000),
+        template: state.tpl, ratio: state.ratio
+      });
+      setSend('보냈어요. 채팅에서 "보낸 카드 올려"라고 말하면 Claude가 확인 후 올립니다.', 'good');
+    }catch(e){ setSend(SEND_ERR[e && e.code] || '보내지 못했어요. 잠시 후 다시 눌러 주세요.', 'err'); }
+    finally{ btn.disabled = false; }
+  });
+
+  /* ---------- queue ---------- */
+  const QKEY = 'cnf.queue.v1';
+  const SLOTS = ['07:30','08:50','10:10','11:50','13:20','15:00','16:40','18:20','19:50','21:20'];
+  function loadQ(){ try{ const v = JSON.parse(localStorage.getItem(QKEY) || '[]'); return Array.isArray(v) ? v : []; }catch(e){ return []; } }
+  function saveQ(q){ try{ localStorage.setItem(QKEY, JSON.stringify(q)); }catch(e){ toast('이 브라우저에는 목록을 저장할 수 없어요'); } }
+  function nextSlot(q){
+    if(q.length < SLOTS.length) return SLOTS[q.length];
+    const last = (q[q.length-1] && q[q.length-1].time) || '21:20';
+    const [h, m] = last.split(':').map(Number); const t = Math.min(23*60+50, h*60 + m + 40);
+    return `${String(Math.floor(t/60)).padStart(2,'0')}:${String(t%60).padStart(2,'0')}`;
+  }
+  function renderQ(){
+    const q = loadQ(), ul = $('#qList'); ul.textContent = '';
+    $('#qEmpty').hidden = q.length > 0;
+    const done = q.filter(x => x.done).length;
+    $('#qSummary').textContent = q.length ? `담은 카드 ${q.length}개 · 올림 ${done}개 · 예약은 하루 25개까지` : '';
+    q.forEach(item => {
+      const li = document.createElement('li'); li.className = 'qitem' + (item.done ? ' done' : '');
+      const img = document.createElement('img'); img.src = item.thumb; img.alt = '';
+      const body = document.createElement('div');
+      const t = document.createElement('div'); t.className = 't'; t.textContent = item.title;
+      const r = document.createElement('div'); r.className = 'r';
+      const time = document.createElement('input'); time.type = 'time'; time.id = 'qt-' + item.id; time.value = item.time; time.setAttribute('aria-label', '올릴 시간');
+      time.addEventListener('change', () => { const all = loadQ(); const x = all.find(y => y.id === item.id); if(x){ x.time = time.value; saveQ(all); } });
+      const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'btn sm ghost'; cp.textContent = '캡션 복사';
+      cp.addEventListener('click', () => copyText(item.caption));
+      const ck = document.createElement('button'); ck.type = 'button'; ck.className = 'btn sm' + (item.done ? ' ghost' : ''); ck.textContent = item.done ? '되돌리기' : '올림 ✓';
+      ck.addEventListener('click', () => { const all = loadQ(); const x = all.find(y => y.id === item.id); if(x){ x.done = !x.done; saveQ(all); renderQ(); } });
+      const del = document.createElement('button'); del.type = 'button'; del.className = 'btn sm ghost'; del.textContent = '삭제';
+      del.addEventListener('click', () => { saveQ(loadQ().filter(y => y.id !== item.id)); renderQ(); });
+      r.append(time, cp, ck, del); body.append(t, r); li.append(img, body); ul.append(li);
+    });
+  }
+  $('#btnQueue').addEventListener('click', async () => {
+    await render();
+    const q = loadQ();
+    if(q.length >= 25){ toast('예약은 하루 25개까지예요'); return; }
+    const th = document.createElement('canvas'); th.width = 180; th.height = Math.round(180 * cv.height / W);
+    th.getContext('2d').drawImage(cv, 0, 0, th.width, th.height);
+    q.push({ id: Date.now().toString(36), title: $('#fHeadline').value.replace(/[\[\]]/g,'').replace(/\n/g,' ').trim() || '(제목 없음)', caption: fullCaption(), time: nextSlot(q), done: false, thumb: th.toDataURL('image/jpeg', .7) });
+    saveQ(q); renderQ(); toast(`목록에 담았어요 · 추천 시간 ${q[q.length-1].time}`);
+  });
+  let clearArmed = false;
+  $('#btnQClear').addEventListener('click', () => {
+    if(!clearArmed){ clearArmed = true; $('#qClearAsk').hidden = false; setTimeout(() => { clearArmed = false; $('#qClearAsk').hidden = true; }, 3000); return; }
+    saveQ([]); renderQ(); clearArmed = false; $('#qClearAsk').hidden = true; toast('목록을 비웠어요');
+  });
+
+  /* ---------- calculator ---------- */
+  function calc(){
+    const p = Math.max(0, +$('#cPosts').value || 0), v = Math.max(0, +$('#cViews').value || 0), rpm = Math.max(0, +$('#cRpm').value || 0);
+    const monthly = p * v * 30, won = monthly / 1000 * rpm, ok = monthly >= 1000000;
+    const out = $('#cOut'); out.textContent = '';
+    const a = document.createElement('div'); a.innerHTML = `한 달 조회수 <span class="big"></span>`; a.querySelector('.big').textContent = monthly.toLocaleString('ko-KR') + '회';
+    const b = document.createElement('div'); b.innerHTML = `어림 수익 <span class="big"></span> <span class="uc">확실하지 않은 사실</span>`; b.querySelector('.big').textContent = '약 ' + Math.round(won).toLocaleString('ko-KR') + '원';
+    const c = document.createElement('p'); c.className = 'hint';
+    c.textContent = ok ? '한국 사진·캐러셀 보너스 기준(월 100만 조회)을 넘어요. 3개월 연속이어야 초대 대상이 되고, 초대 여부는 인스타그램이 정합니다.'
+                       : `한국 기준(월 100만 조회)까지 ${(1000000 - monthly).toLocaleString('ko-KR')}회 남았어요. 보너스는 이 기준을 3개월 연속 넘긴 뒤 초대를 받아야 시작돼요.`;
+    out.append(a, b, c);
+  }
+  ['cPosts','cViews','cRpm'].forEach(id => document.getElementById(id).addEventListener('input', calc));
+
+  /* ---------- boot ---------- */
+  showTab((location.hash || '').slice(1));
+  renderQ(); calc(); scheduleRender();
+})();
+</script>
