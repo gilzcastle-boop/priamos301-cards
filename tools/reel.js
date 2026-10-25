@@ -73,10 +73,12 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
       const outA = 1 - prog(t, spec.headOut, spec.headOut + .4); if(outA <= 0) return;
       const y0 = 1240;
       // line 1: ink on paper card, slides up
-      const u1 = 1, slam = 1 + .22 * (1 - ease(prog(t, 0, .25)));
+      const u1 = 1;
       if(u1 > 0){
-        x.save(); x.globalAlpha = outA; x.translate(96, y0 + 40); x.scale(slam, slam); x.translate(-96, -(y0 + 40));
         let f1 = 78; x.font = `900 ${f1}px "Hahmlet"`; { const m = x.measureText(spec.line1).width; if(m > 860){ f1 = Math.floor(78 * 860 / m); x.font = `900 ${f1}px "Hahmlet"`; } } const w1 = x.measureText(spec.line1).width;
+        // Slam in from slightly larger, but never wider than the frame.
+        const slam = Math.min(1 + .22 * (1 - ease(prog(t, 0, .25))), Math.max(1, 976 / (w1 + 64)));
+        x.save(); x.globalAlpha = outA; x.translate(96, y0 + 40); x.scale(slam, slam); x.translate(-96, -(y0 + 40));
         x.fillStyle = V.paper; x.fillRect(64, y0 - 20, w1 + 64, 120); x.strokeStyle = V.ink; x.lineWidth = 3; x.strokeRect(64, y0 - 20, w1 + 64, 120);
         x.fillStyle = V.ink; x.fillText(spec.line1, 96, y0 + 72, 880); x.restore();
       }
