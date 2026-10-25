@@ -26,6 +26,7 @@ import json
 import re
 import sys
 import textwrap
+import unicodedata
 
 LIMIT = 2200             # Instagram's hard caption limit.
 TRUNCATE = 125           # Roughly where the feed cuts to "... more".
@@ -35,12 +36,14 @@ HASHTAG_LIMIT = 5        # Instagram's cap per post or reel since 18 Dec 2025,
                          # rather than many generic ones, can improve both your
                          # content's performance and people's experience".
 
-HASHTAG_RE = re.compile(r"(?:^|\s)(#[A-Za-z0-9_]+)")
+# \w is Unicode-aware, so Korean tags like #영동고속도로 count as tags.
+HASHTAG_RE = re.compile(r"(?:^|\s)(#\w+)")
 MENTION_RE = re.compile(r"(?:^|\s)(@[A-Za-z0-9_.]+)")
 LINK_RE = re.compile(r"https?://\S+|\bwww\.\S+|\b[a-z0-9-]+\.(?:com|co|io|net|org|ai|app)/\S*",
                      re.IGNORECASE)
 EMOJI_RE = re.compile(r"[\U0001F300-\U0001FAFF☀-➿←-⇿️]")
-CONCRETE_RE = re.compile(r"\$\s?\d|\b\d[\d,.]*\b|(?<!^)\b[A-Z][a-z]{2,}\b", re.MULTILINE)
+# Korean attaches counters straight to numbers (24일, 6.5t, 2차), so no trailing \b.
+CONCRETE_RE = re.compile(r"\$\s?\d|(?<![\d,.])\d[\d,.]*|(?<!^)\b[A-Z][a-z]{2,}\b", re.MULTILINE)
 
 ASKS = [
     (re.compile(r"(?i)\bcomment (?:the word |\")?[A-Z0-9]{2,}\b"), "comment a keyword"),
@@ -51,11 +54,22 @@ ASKS = [
     (re.compile(r"(?i)\blink in (?:my )?bio\b"), "link in bio"),
     (re.compile(r"(?i)\b(?:swipe|tap) (?:through|left|right|for|to)\b"), "swipe or tap"),
     (re.compile(r"(?i)\btell me\b|\bwhat would you\b|\bwhich one\b"), "answer a question"),
+    # Korean asks
+    (re.compile(r"댓글\S*\s*(?:\S+\s*){0,3}?(?:남겨|달아|적어|써)\s?주세요"), "comment"),
+    (re.compile(r"(?:DM|디엠)\S*\s*(?:주세요|보내\s?주세요)"), "DM me"),
+    (re.compile(r"저장해\s?(?:두세요|주세요|두고)"), "save this"),
+    (re.compile(r"(?:공유|보내|전해)\s?(?:해\s?)?주세요"), "share this"),
+    (re.compile(r"팔로우\s?(?:해\s?)?(?:주세요|하고|하면)"), "follow"),
+    (re.compile(r"프로필\s?(?:의\s?)?링크"), "link in bio"),
+    (re.compile(r"어떻게 생각하(?:세요|시나요)|여러분(?:이라면|은 어떻게)"), "answer a question"),
 ]
 
 FILLER_TAGS = {"#viral", "#fyp", "#explore", "#explorepage", "#foryou", "#foryoupage",
                "#trending", "#instagood", "#love", "#follow", "#like4like", "#reels",
-               "#reelsinstagram", "#viralreels", "#instadaily"}
+               "#reelsinstagram", "#viralreels", "#instadaily",
+               # Korean tags that describe nothing about the post
+               "#릴스", "#탐색탭", "#추천", "#인기", "#좋반", "#맞팔", "#선팔", "#팔로우",
+               "#소통", "#일상", "#이슈", "#속보", "#뉴스", "#핫이슈", "#오늘의뉴스"}
 
 
 def visible_window(text, cut):
@@ -64,14 +78,32 @@ def visible_window(text, cut):
     return flat if len(flat) <= cut else flat[:cut]
 
 
+def cells(s):
+    """Terminal width: Hangul, CJK and most emoji take two cells."""
+    return sum(2 if unicodedata.east_asian_width(c) in "WF" else 1 for c in s)
+
+
+def wrap_cells(raw, width):
+    if cells(raw) == len(raw):
+        return textwrap.wrap(raw, width) or [""]
+    lines, line = [], ""
+    for c in raw:
+        if cells(line + c) > width:
+            lines.append(line)
+            line = c.lstrip()
+        else:
+            line += c
+    return lines + [line]
+
+
 def render_box(window, truncated, out=sys.stdout, width=52):
     print("\n  WHAT THE FEED SHOWS", file=out)
     print("  +" + "-" * (width + 2) + "+", file=out)
     lines = []
     for raw in window.split("\n"):
-        lines.extend(textwrap.wrap(raw, width) or [""])
+        lines.extend(wrap_cells(raw, width))
     for line in lines[:8]:
-        print(f"  | {line:<{width}} |", file=out)
+        print(f"  | {line}{' ' * max(width - cells(line), 0)} |", file=out)
     tail = "... more" if truncated else "(whole caption fits)"
     print("  +" + "-" * (width + 2 - len(tail) - 2) + f" {tail} " + "+", file=out)
 

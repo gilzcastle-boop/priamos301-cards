@@ -36,7 +36,7 @@ import re
 import statistics
 import sys
 
-WORD_RE = re.compile(r"[A-Za-z0-9$%'’-]+")
+WORD_RE = re.compile(r"[A-Za-z0-9$%'’-]+")   # English; Korean hooks use KO_* below
 NUMBER_RE = re.compile(
     r"\$\s?\d[\d,]*(?:\.\d+)?"                       # money, whole
     r"|\b\d[\d,]*(?:\.\d+)?\s?"                      # a figure, with or
@@ -210,18 +210,126 @@ def check_address(text):
     return 35.0, "third person, nobody in the room"
 
 
+# --- Korean hooks ------------------------------------------------------------
+# The checks above count English words. A Korean hook gets the same five
+# properties measured in Korean units: eojeol (space-separated chunks) for
+# length, syllables for speaking time, and Korean tension vocabulary.
+HANGUL_RE = re.compile(r"[가-힣]")
+KO_WORD_RE = re.compile(r"[\w$%'’·]+(?:[.,]\d+\w*)*")
+KO_NUMBER_RE = re.compile(r"\d[\d,]*(?:\.\d+)?")
+KO_QUOTE_RE = re.compile(r"[\"“'‘「『][^\"”'’」』]{2,}[\"”'’」』]")
+KO_PLACE_RE = re.compile(r"[가-힣]{1,8}(?:고속도로|분기점|공항|병원|경찰서|경찰청|지검|지법|법원"
+                         r"|대학교|그룹|은행|시청|구청|군청|도청)")
+KO_AMOUNTS = ("억", "조 원", "만 원", "만원", "절반", "두 배", "수십", "수백", "수천", "수만",
+              "수억", "역대", "최초")
+KO_STAKES = ("사망", "숨져", "숨진", "숨졌", "중상", "부상", "다쳐", "다친", "절단", "체포", "구속",
+             "기소", "징역", "실형", "벌금", "논란", "파문", "폭로", "의혹", "경고", "위험", "비상",
+             "사고", "참사", "폭발", "화재", "추락", "충돌", "붕괴", "실종", "피해", "손실", "적자",
+             "폭락", "급락", "급등", "해고", "금지", "중단", "취소", "거부", "청원", "고발", "고소",
+             "소송", "사기", "횡령", "갑질", "학대", "폭행", "살인", "흉기", "총기", "총격", "엽총",
+             "맞았", "치여", "치였", "몰래", "비밀", "거짓", "처음", "최악", "결국", "끝내",
+             "않", "없", "아니", "못 ", "안 ")
+KO_WEAK_OPENERS = ("안녕", "여러분 안녕", "오늘은", "오늘의", "자,", "자 ", "음", "그냥", "혹시",
+                   "이번 영상", "지금부터", "솔직히", "있잖아")
+KO_SYLLABLES_PER_SEC = 5.5   # read-aloud pace, about 330 syllables a minute
+KO_DEALBREAKERS = [
+    (re.compile(r"^\s*(?:스크롤\s?멈춰|넘기지\s?마)"),
+     "\"스크롤 멈춰\"로 시작. 주목을 달라고 하는 건 아직 못 얻었다는 뜻이다."),
+    (re.compile(r"이번 영상에서|오늘 영상에서|알려\s?드릴게요|끝까지 보세요"),
+     "영상 예고형 서두. 지우고 결론부터 시작하라."),
+    (re.compile(r"^\s*(?:안녕하세요|여러분 안녕)"),
+     "인사로 시작. 피드에 인사받으러 온 사람은 없다."),
+]
+
+
+def ko_syllables(text):
+    """Hangul syllables, plus about two per digit group or Latin word said aloud."""
+    return (len(HANGUL_RE.findall(text)) + 2 * len(KO_NUMBER_RE.findall(text))
+            + 2 * len(re.findall(r"[A-Za-z]+", text)))
+
+
+def ko_stakes(text):
+    found = [k.strip() for k in KO_STAKES if k in text]
+    return found + (["물음표"] if "?" in text else [])
+
+
+def ko_check_length(text):
+    n = len(KO_WORD_RE.findall(text))
+    secs = ko_syllables(text) / KO_SYLLABLES_PER_SEC
+    chars = len(text.strip())
+    if 3 <= n <= 8:
+        score = 100.0
+    elif n < 3:
+        score = clamp(100 - (3 - n) * 25)
+    else:
+        score = clamp(100 - (n - 8) * 12)
+    if chars > 26:                       # two lines of big on-screen Korean text
+        score -= 12
+    return clamp(score), f"{n}어절, {chars}자, 말하면 약 {secs:.1f}초 (권장 3-8어절)"
+
+
+def ko_check_specificity(text):
+    nums = KO_NUMBER_RE.findall(text)
+    quotes = KO_QUOTE_RE.findall(text)
+    places = KO_PLACE_RE.findall(text)
+    amounts = [a for a in KO_AMOUNTS if a in text]
+    hits = len(nums) + len(quotes) + len(places) + len(amounts)
+    score = 15.0 if hits == 0 else clamp(45 + hits * 30)
+    found = ", ".join(nums[:2] + quotes[:1] + places[:2] + amounts[:2])
+    return score, (f"구체 표지 {hits}개" + (f": {found}" if found else
+                   " - 숫자·고유명사·인용 없음"))
+
+
+def ko_check_stakes(text):
+    markers = ko_stakes(text)
+    score = {0: 20.0, 1: 70.0}.get(len(markers), 100.0)
+    return score, (f"긴장 표지 {len(markers)}개" + (f": {', '.join(markers[:4])}" if markers else
+                   " - 걸린 것이 없는 문장"))
+
+
+def ko_check_frontload(text):
+    w = KO_WORD_RE.findall(text)
+    if not w:
+        return 0.0, "empty"
+    weak = next((o for o in KO_WEAK_OPENERS if text.lstrip().startswith(o)), None)
+    payload = next((i for i, tok in enumerate(w)
+                    if KO_NUMBER_RE.search(tok) or ko_stakes(tok) or KO_PLACE_RE.search(tok)
+                    or any(q in tok for q in "\"“'‘「『")), None)
+    if payload is None:
+        base, where = 30.0, "핵심 단어가 없음"
+    elif payload <= 2:
+        base, where = 100.0, f"핵심이 {payload + 1}번째 어절"
+    elif payload <= 4:
+        base, where = 70.0, f"핵심이 {payload + 1}번째 어절, 더 앞으로"
+    else:
+        base, where = 40.0, f"핵심이 {payload + 1}번째 어절, 너무 늦음"
+    return clamp(base - (30 if weak else 0)), where + (f"; 약한 시작 \"{weak.strip()}\"" if weak else "")
+
+
+def ko_check_address(text):
+    if re.search(r"당신|여러분|너희|네가|니가|(?:^|\s)너(?:는|도|만|$|\s)", text):
+        return 100.0, "시청자에게 직접 말함"
+    if re.search(r"(?:세요|하라|마라|마세요|해라|봐라|봐요|말 것)[.!?]?\s*$", text.strip()):
+        return 90.0, "명령형 문장"
+    if re.search(r"(?:^|\s)(?:나|내가|내|저는|제가|저|우리)(?:\s|는|가|의|$)", text):
+        return 70.0, "1인칭, 시청자는 없음"
+    return 35.0, "3인칭 (뉴스형 훅에선 흔함)"
+
+
 CHECKS = ["LENGTH", "SPECIFICITY", "STAKES", "FRONTLOAD", "ADDRESS"]
 
 
 def run(text):
+    ko = bool(HANGUL_RE.search(text))
     results = {
-        "LENGTH": check_length(text),
-        "SPECIFICITY": check_specificity(text),
-        "STAKES": check_stakes(text),
-        "FRONTLOAD": check_frontload(text),
-        "ADDRESS": check_address(text),
+        "LENGTH": (ko_check_length if ko else check_length)(text),
+        "SPECIFICITY": (ko_check_specificity if ko else check_specificity)(text),
+        "STAKES": (ko_check_stakes if ko else check_stakes)(text),
+        "FRONTLOAD": (ko_check_frontload if ko else check_frontload)(text),
+        "ADDRESS": (ko_check_address if ko else check_address)(text),
     }
-    flags = [msg for pattern, msg in DEALBREAKERS if pattern.search(text)]
+    flags = [msg for pattern, msg in DEALBREAKERS + (KO_DEALBREAKERS if ko else [])
+             if pattern.search(text)]
     scores = [results[c][0] for c in CHECKS]
     # The weakest property caps the hook, same logic as detect.py: one bad
     # property is enough for the thumb to keep moving.
