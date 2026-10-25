@@ -8,7 +8,8 @@ const path = require('path');
   const spec = JSON.parse(fs.readFileSync(specPath, 'utf8'));
   const page = fs.readFileSync(path.join(__dirname, 'card_factory.html'), 'utf8');
   const b = await chromium.launch();
-  const p = await b.newPage({ viewport: { width: 1280, height: 1400 } });
+  // The card prints today's date, so render in Korean time rather than the container's UTC.
+  const p = await b.newPage({ viewport: { width: 1280, height: 1400 }, timezoneId: 'Asia/Seoul' });
   await p.setContent('<!doctype html><html><head><meta charset="utf-8"></head><body>' + page + '</body></html>', { waitUntil: 'networkidle', timeout: 60000 });
   if (spec.image) { await p.setInputFiles('#fileIn', spec.image); await p.waitForTimeout(800); }
   await p.evaluate(s => {
