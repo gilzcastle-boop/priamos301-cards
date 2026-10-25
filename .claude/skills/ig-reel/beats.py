@@ -26,16 +26,23 @@ import json
 import re
 import sys
 
-WORD_RE = re.compile(r"[A-Za-z0-9$%'’-]+")
-SENT_RE = re.compile(r"[^.!?]+[.!?]*")
-CONCRETE_RE = re.compile(r"\$\s?\d|\b\d[\d,.]*\b|(?<!^)\b[A-Z][a-z]{2,}\b", re.MULTILINE)
+WORD_RE = re.compile(r"[A-Za-z0-9$%'’-]+|[가-힣]+")
+SENT_RE = re.compile(r"(?:[^.!?]|(?<=\d)\.(?=\d))+[.!?]*")   # 6.5t is not a sentence end
+# Korean attaches counters straight to numbers (24일, 6.5t), so no trailing \b.
+CONCRETE_RE = re.compile(r"\$\s?\d|(?<![\d,.])\d[\d,.]*|(?<!^)\b[A-Z][a-z]{2,}\b"
+                         r"|[\"“「『][^\"”」』]{2,}[\"”」』]", re.MULTILINE)
 STOPWORDS = {
     "the", "a", "an", "and", "or", "but", "if", "of", "to", "in", "on", "for",
     "with", "that", "this", "it", "is", "are", "was", "were", "be", "been",
     "you", "your", "i", "my", "me", "we", "our", "they", "them", "he", "she",
     "so", "just", "not", "no", "do", "did", "does", "have", "has", "had",
     "will", "can", "at", "as", "by", "from", "out", "up", "off", "one", "all",
+    "그리고", "하지만", "그런데", "그래서", "이", "그", "저", "것", "수", "등", "더", "또", "및",
 }
+
+# Korean is timed in syllables, not words: eojeol vary too much in length.
+HANGUL_RE = re.compile(r"[가-힣]")
+PARTICLE_RE = re.compile(r"(?:에서|으로|까지|부터|에게|한테|은|는|이|가|을|를|에|의|도|로|와|과|만)$")
 
 HOOK_WINDOW = 3.0        # seconds. Past this, the thumb has already decided.
 MAX_BEAT = 4.0           # seconds on one idea with no change on screen.
@@ -45,6 +52,23 @@ ABSTRACT_RUN = 3         # beats in a row with nothing checkable in them.
 def words(text):
     # "$18,000" is one word when it is spoken, so it is one word here too.
     return WORD_RE.findall(re.sub(r"(?<=\d),(?=\d)", "", text))
+
+
+def seconds(text, wps, sps):
+    """English at words per second; Korean at syllables per second, with a
+    digit group or a Latin word said as about two syllables."""
+    plain = re.sub(r"(?<=\d),(?=\d)", "", text)
+    if not HANGUL_RE.search(plain):
+        return len(words(plain)) / wps
+    syll = (len(HANGUL_RE.findall(plain)) + 2 * len(re.findall(r"\d+(?:\.\d+)?", plain))
+            + 2 * len(re.findall(r"[A-Za-z]+", plain)))
+    return syll / sps
+
+
+def stem(token):
+    """Drop a trailing Korean particle so 화물차에 and 화물차 count as the same word."""
+    low = token.lower()
+    return PARTICLE_RE.sub("", low) if HANGUL_RE.search(low) and len(low) > 2 else low
 
 
 def pretty(token):
@@ -57,13 +81,13 @@ def tc(seconds):
     return f"{int(m)}:{s:04.1f}"
 
 
-def split_beats(raw, wps):
+def split_beats(raw, wps, sps):
     """One line is one beat, unless a line is too long to be one."""
     beats = []
     for line in [l.strip() for l in raw.splitlines()]:
         if not line:
             continue
-        if len(words(line)) / wps <= MAX_BEAT * 1.5:
+        if seconds(line, wps, sps) <= MAX_BEAT * 1.5:
             beats.append(line)
             continue
         # Long paragraph: break it at sentence ends so the timings mean
@@ -72,7 +96,7 @@ def split_beats(raw, wps):
         buf = ""
         for part in parts:
             candidate = (buf + " " + part).strip()
-            if buf and len(words(candidate)) / wps > MAX_BEAT:
+            if buf and seconds(candidate, wps, sps) > MAX_BEAT:
                 beats.append(buf)
                 buf = part
             else:
@@ -82,16 +106,20 @@ def split_beats(raw, wps):
     return beats
 
 
-def analyse(raw, wpm=165, target=None):
+def analyse(raw, wpm=165, target=None, spm=330):
     wps = wpm / 60.0
-    beats = split_beats(raw, wps)
+    sps = spm / 60.0
+    ko = bool(HANGUL_RE.search(raw))
+    # What "cut N" means in the notes: words for English, syllables for Korean.
+    rate, unit = (sps, "syllables") if ko else (wps, "words")
+    beats = split_beats(raw, wps, sps)
     if not beats:
         return None
 
     rows, clock = [], 0.0
     for i, text in enumerate(beats):
         n = len(words(text))
-        dur = n / wps
+        dur = seconds(text, wps, sps)
         rows.append({
             "n": i + 1,
             "start": round(clock, 2),
@@ -119,7 +147,7 @@ def analyse(raw, wpm=165, target=None):
     if rows[0]["dur"] > HOOK_WINDOW:
         rows[0]["flags"].append(f"hook runs {rows[0]['dur']:.1f}s, past the {HOOK_WINDOW:.0f}s mark")
         notes.append(f"Beat 1 takes {rows[0]['dur']:.1f}s to say. Cut it to "
-                     f"{int(HOOK_WINDOW * wps)} words or fewer, or the hook lands after "
+                     f"{int(HOOK_WINDOW * rate)} {unit} or fewer, or the hook lands after "
                      "the decision has been made.")
     if rows[0]["concrete"] == 0:
         notes.append("Beat 1 has no number and no name in it. Hooks without something "
@@ -146,8 +174,8 @@ def analyse(raw, wpm=165, target=None):
             run, start = 0, None
 
     # Does the last line hand you back to the first one?
-    first = {w.lower() for w in words(rows[0]["text"]) if w.lower() not in STOPWORDS}
-    last = {w.lower() for w in words(rows[-1]["text"]) if w.lower() not in STOPWORDS}
+    first = {stem(w) for w in words(rows[0]["text"]) if stem(w) not in STOPWORDS}
+    last = {stem(w) for w in words(rows[-1]["text"]) if stem(w) not in STOPWORDS}
     loop = sorted(pretty(w) for w in first & last)
     if loop:
         notes.append(f"Loops: the last beat repeats \"{', '.join(loop[:3])}\" from the hook. "
@@ -161,13 +189,13 @@ def analyse(raw, wpm=165, target=None):
         if abs(delta) <= target * 0.1:
             notes.append(f"Length is on target ({total:.1f}s against {target}s).")
         elif delta > 0:
-            notes.append(f"{delta:.1f}s over target. Cut about {int(delta * wps)} words.")
+            notes.append(f"{delta:.1f}s over target. Cut about {int(delta * rate)} {unit}.")
         else:
-            notes.append(f"{-delta:.1f}s under target. Either add {int(-delta * wps)} words "
+            notes.append(f"{-delta:.1f}s under target. Either add {int(-delta * rate)} {unit} "
                          "or shoot it short. Short is usually right.")
 
     return {
-        "wpm": wpm, "target": target,
+        "wpm": wpm, "spm": spm if ko else None, "target": target,
         "total_seconds": round(total, 2),
         "total_words": sum(r["words"] for r in rows),
         "beats": rows,
@@ -176,8 +204,9 @@ def analyse(raw, wpm=165, target=None):
 
 
 def render(a, out=sys.stdout):
+    pace = f"{a['spm']} syllables/min" if a["spm"] else f"{a['wpm']} wpm"
     head = (f"BEAT SHEET  ·  {a['total_words']} words  ·  ~{a['total_seconds']:.1f}s "
-            f"at {a['wpm']} wpm" + (f"  ·  target {a['target']}s" if a["target"] else ""))
+            f"at {pace}" + (f"  ·  target {a['target']}s" if a["target"] else ""))
     print("\n" + head, file=out)
     print("=" * max(len(head), 72), file=out)
     for r in a["beats"]:
@@ -195,12 +224,14 @@ def main():
     ap = argparse.ArgumentParser(description="Time a Reel script into a beat sheet.")
     ap.add_argument("input", nargs="?", default="-", help="script file, or - for stdin")
     ap.add_argument("--wpm", type=float, default=165, help="speaking rate (default 165)")
+    ap.add_argument("--spm", type=float, default=330,
+                    help="Korean speaking rate in syllables per minute (default 330)")
     ap.add_argument("--target", type=float, help="target length in seconds")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
 
     raw = sys.stdin.read() if args.input == "-" else open(args.input, encoding="utf-8").read()
-    a = analyse(raw, wpm=args.wpm, target=args.target)
+    a = analyse(raw, wpm=args.wpm, target=args.target, spm=args.spm)
     if not a:
         print("empty script", file=sys.stderr)
         sys.exit(2)
