@@ -5,8 +5,8 @@
 
 | 날짜 | 번호 | 시각 | 분류 | 제목 | 출처 | 카드 | 릴스 |
 |---|---|---|---|---|---|---|---|
-| 2026-10-25 | 06 | 20:57 | 사건 | 부캉이 찍겠다며 배 빌린 유튜버, 국가보안시설 촬영 | - | https://www.instagram.com/p/De6pwpmHHH2/ | - |
-| 2026-10-25 | 07 | 20:57 | 국제 | 프랑스 41만 명 생활고 시위, 유럽 곳곳으로 | - | https://www.instagram.com/p/De6py6cIIKM/ | - |
+| 2026-10-25 | 06 | 20:57 | 사건 | 부캉이 찍겠다며 배 빌린 유튜버, 국가보안시설 촬영 | - | https://www.instagram.com/p/De6pwpmHHH2/ | https://www.instagram.com/reel/De7Jv3DgJnT/ (10-26 01:37) |
+| 2026-10-25 | 07 | 20:57 | 국제 | 프랑스 41만 명 생활고 시위, 유럽 곳곳으로 | - | https://www.instagram.com/p/De6py6cIIKM/ | https://www.instagram.com/reel/De7J1tLAT0G/ (10-26 01:38) |
 | 2026-10-25 | 08 | 21:48 | 사건 | 장봉도 노루 향해 쏜 산탄, 80대 맞아 | - | https://www.instagram.com/p/De6voZDIFKj/ | https://www.instagram.com/reel/De65_kglXZM/ |
 | 2026-10-25 | 09 | 23:50 | 연예 | 승리 측 "소주병 집었지만 휘두르진 않았다" | - | https://www.instagram.com/p/De6-gIOFUUm/ | https://www.instagram.com/reel/De69eecjqjN/ |
 | 2026-10-26 | 10 | 08:00 예약 | 이슈 | '닥터X' 5·18 회차 방영 중단 청원 | - | 예약 | 예약 |
