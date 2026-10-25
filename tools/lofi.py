@@ -1,9 +1,11 @@
-# Original lo-fi background bed (soft electric-piano chords, vinyl crackle, brushed beat): python3 lofi.py seconds out.wav
+# Original lo-fi background bed (soft electric-piano chords, vinyl crackle, brushed beat): python3 lofi.py seconds out.wav [hit,hit,...]
+# Optional hit times (seconds) add a low impact thud where the hook text slams in.
 import sys, wave
 import numpy as np
 
 SR = 48000
 dur = float(sys.argv[1]); out = sys.argv[2]
+hits = [float(h) for h in sys.argv[3].split(',') if h] if len(sys.argv) > 3 else []
 n = int(SR * dur); t = np.arange(n) / SR
 rng = np.random.default_rng(11)
 mix = np.zeros(n)
@@ -48,6 +50,15 @@ pops = rng.integers(0, n, int(dur * 6)); y[pops] += rng.uniform(-.15, .15, len(p
 # fade in/out and normalise
 fade = np.minimum(1, t / 1.0) * np.minimum(1, (dur - t) / 1.5)
 y *= fade; y /= max(1e-6, np.abs(y).max()) / .6
+# impact thuds: a falling sine boom plus a short noise click, laid over the bed after the fade-in
+for h in hits:
+    s0 = int(h * SR)
+    if s0 >= n: continue
+    L = min(n - s0, int(.6 * SR)); tt = np.arange(L) / SR
+    boom = np.sin(2 * np.pi * np.cumsum(40 + 110 * np.exp(-tt * 12)) / SR) * np.exp(-tt * 7)
+    click = rng.standard_normal(L) * np.exp(-tt * 45)
+    y[s0:s0 + L] += .55 * boom + .12 * click
+y = np.clip(y, -.98, .98)
 st = np.stack([y, np.roll(y, 120)], axis=1)
 with wave.open(out, 'wb') as w:
     w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)

@@ -11,7 +11,7 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@500;700;900&family=Noto+Sans+KR:wght@700;800;900&family=Yellowtail&display=swap"></head>
 <body style="margin:0"><canvas id="c" width="1080" height="1920"></canvas></body></html>`, { waitUntil: 'networkidle' });
   await p.evaluate(async ({ img, spec }) => {
-    const all = [spec.label, spec.line1, spec.line2, ...spec.subs.map(s => s[2]), spec.handle, 'PRIAMOS DAILY ISSUE 0123456789. 그림: AI 생성 연출 이미지 자세한 내용은 캡션에서'].join(' ');
+    const all = [spec.label, spec.stamp || '', spec.line1, spec.line2, ...spec.subs.map(s => s[2]), spec.handle, 'PRIAMOS DAILY ISSUE 0123456789. 그림: AI 생성 연출 이미지 자세한 내용은 캡션에서'].join(' ');
     await Promise.all([document.fonts.load('900 80px "Hahmlet"', all), document.fonts.load('700 40px "Hahmlet"', all), document.fonts.load('800 50px "Noto Sans KR"', all), document.fonts.load('900 50px "Noto Sans KR"', all), document.fonts.load('400 120px "Yellowtail"', 'Priamos')]);
     const im = new Image(); im.src = img; await im.decode(); window.IMG = im;
   }, { img, spec });
@@ -32,10 +32,14 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
       const [t0, x0, y0, z0] = k[i], [t1, x1, y1, z1] = k[i + 1], u = ease(prog(t, t0, t1));
       return [x0 + (x1 - x0) * u, y0 + (y1 - y0) * u, z0 + (z1 - z0) * u];
     }
+    // Hook impact: zoom punch on frame one, a smaller punch and a shake when line 2 lands.
+    const hit = t => 1 - ease(prog(t, 0, .45));
+    const hit2 = t => t < spec.line2At ? 0 : 1 - ease(prog(t, spec.line2At, spec.line2At + .35));
     function drawImage(t){
-      const im = window.IMG, [cx, cy, z] = cam(t), s = H / im.height * z;
+      const im = window.IMG, [cx, cy, z0] = cam(t), z = z0 * (1 + .14 * hit(t) + .05 * hit2(t)), s = H / im.height * z;
       let ox = W / 2 - cx * s, oy = H / 2 - cy * s;
       ox = clamp(ox, W - im.width * s, 0); oy = clamp(oy, H - im.height * s, 0);
+      const sh = 12 * hit2(t); ox = clamp(ox + Math.sin(t * 95) * sh, W - im.width * s, 0); oy = clamp(oy + Math.cos(t * 83) * sh, H - im.height * s, 0);
       x.filter = 'sepia(.12) saturate(1.05) contrast(1.03)'; x.drawImage(im, ox, oy, im.width * s, im.height * s); x.filter = 'none';
       x.save(); x.globalAlpha = .07; x.fillStyle = dotPat; x.fillRect(0, 0, W, H); x.restore();
       const g = x.createLinearGradient(0, H * .5, 0, H); g.addColorStop(0, 'rgba(30,18,10,0)'); g.addColorStop(1, 'rgba(30,18,10,.55)'); x.fillStyle = g; x.fillRect(0, H * .5, W, H * .5);
@@ -47,7 +51,7 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
       x.strokeStyle = V.ink; x.lineWidth = 3; x.strokeRect(30, 30, W - 60, H - 60);
     }
     function header(t){
-      const a = prog(t, 0, .4);
+      const a = 1;
       x.save(); x.globalAlpha = a;
       x.fillStyle = V.paper; x.fillRect(30, 30, W - 60, 150); x.drawImage(grain, 0, 0, W, 180, 0, 0, W, 180);
       x.fillStyle = V.ink; x.font = '700 30px "Hahmlet"'; try{ x.letterSpacing = '5px'; }catch(e){}
@@ -69,9 +73,9 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
       const outA = 1 - prog(t, spec.headOut, spec.headOut + .4); if(outA <= 0) return;
       const y0 = 1240;
       // line 1: ink on paper card, slides up
-      const u1 = ease(prog(t, .4, 1.1));
+      const u1 = 1, slam = 1 + .22 * (1 - ease(prog(t, 0, .25)));
       if(u1 > 0){
-        x.save(); x.globalAlpha = u1 * outA; x.translate(0, (1 - u1) * 60);
+        x.save(); x.globalAlpha = outA; x.translate(96, y0 + 40); x.scale(slam, slam); x.translate(-96, -(y0 + 40));
         let f1 = 78; x.font = `900 ${f1}px "Hahmlet"`; { const m = x.measureText(spec.line1).width; if(m > 860){ f1 = Math.floor(78 * 860 / m); x.font = `900 ${f1}px "Hahmlet"`; } } const w1 = x.measureText(spec.line1).width;
         x.fillStyle = V.paper; x.fillRect(64, y0 - 20, w1 + 64, 120); x.strokeStyle = V.ink; x.lineWidth = 3; x.strokeRect(64, y0 - 20, w1 + 64, 120);
         x.fillStyle = V.ink; x.fillText(spec.line1, 96, y0 + 72, 880); x.restore();
@@ -87,6 +91,22 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
       // sub line
       const u3 = prog(t, spec.line2At + .5, spec.line2At + 1);
       if(u3 > 0 && spec.sub){ x.save(); x.globalAlpha = u3 * outA; x.font = '700 40px "Noto Sans KR"'; x.fillStyle = V.paper; x.shadowColor = 'rgba(0,0,0,.6)'; x.shadowBlur = 10; x.fillText(spec.sub, 80, y0 + 320, 880); x.restore(); }
+    }
+    function stamp(t){
+      if(!spec.stamp) return;
+      const u = prog(t, .12, .4); if(u <= 0) return;
+      const outA = 1 - prog(t, spec.headOut, spec.headOut + .4); if(outA <= 0) return;
+      const sc = 1 + 1.2 * (1 - ease(u));
+      x.font = '900 60px "Hahmlet"'; const w = x.measureText(spec.stamp).width + 64, h = 104;
+      x.save(); x.globalAlpha = .93 * Math.min(1, u * 3) * outA; x.translate(Math.max(250, w / 2 + 80), 340); x.rotate(-.14); x.scale(sc, sc);
+      x.fillStyle = 'rgba(242,230,203,.86)'; x.fillRect(-w / 2, -h / 2, w, h);
+      x.strokeStyle = V.red; x.lineWidth = 7; x.strokeRect(-w / 2, -h / 2, w, h); x.lineWidth = 2; x.strokeRect(-w / 2 + 11, -h / 2 + 11, w - 22, h - 22);
+      x.fillStyle = V.red; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(spec.stamp, 0, 4);
+      x.restore(); x.textAlign = 'left'; x.textBaseline = 'alphabetic';
+    }
+    function flash(t){
+      const a = .22 * hit2(t); if(a <= 0) return;
+      x.save(); x.fillStyle = V.red; x.globalAlpha = a; x.fillRect(0, 0, W, H); x.restore();
     }
     function subtitle(t){
       spec.subs.forEach(([a, b, text]) => {
@@ -118,7 +138,7 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
     }
     window.renderFrame = t => {
       x.clearRect(0, 0, W, H);
-      drawImage(t); header(t); label(t); headline(t); subtitle(t); credit(t); frame(); endCard(t);
+      drawImage(t); flash(t); header(t); label(t); stamp(t); headline(t); subtitle(t); credit(t); frame(); endCard(t);
       return document.getElementById('c').toDataURL('image/jpeg', .9);
     };
   }, spec);

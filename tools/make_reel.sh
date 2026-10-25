@@ -9,7 +9,9 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 dur=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['duration'])" "$spec")
 NODE_PATH=$(npm root -g) node "$here/reel.js" "$spec" "$work/frames"
-python3 "$here/lofi.py" "$dur" "$work/bed.wav"
+# Thuds where the hook lands: frame one and the red second line.
+hits=$(python3 -c "import json,sys; s=json.load(open(sys.argv[1])); print('0,%s' % s['line2At'])" "$spec")
+python3 "$here/lofi.py" "$dur" "$work/bed.wav" "$hits"
 ffmpeg -y -hide_banner -loglevel error -framerate 30 -i "$work/frames/f%04d.jpg" -i "$work/bed.wav" \
   -c:v libx264 -pix_fmt yuv420p -profile:v high -level 4.1 -preset medium -crf 20 -r 30 \
   -c:a aac -b:a 128k -ar 48000 -shortest -movflags +faststart "$out"
