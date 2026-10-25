@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Publish one card (JPEG + caption .txt) from this repo to Instagram.
+"""Publish one card (JPEG + caption .txt) or reel (MP4 + caption .txt) from this repo to Instagram.
 
 Usage: python3 tools/publish.py cards/20261025-01.jpg
+       python3 tools/publish.py reels/20261025-08.mp4
 
-The image must already be pushed to the public repo (Meta fetches it by URL).
+The file must already be pushed to the public repo (Meta fetches it by URL).
 The access token is attached by the environment's network secret for
 graph.instagram.com, so this script never reads or prints it.
 """
@@ -34,22 +35,23 @@ def main():
     me = call("GET", f"{API}/me?fields=user_id,username")
     ig_id = me["user_id"]
 
-    container = call("POST", f"{API}/{ig_id}/media", {
-        "image_url": f"{REPO_RAW}/{img.as_posix()}",
-        "caption": caption,
-    })["id"]
+    url = f"{REPO_RAW}/{img.as_posix()}"
+    is_reel = img.suffix.lower() == ".mp4"
+    payload = {"media_type": "REELS", "video_url": url, "share_to_feed": "true", "thumb_offset": "4000"} if is_reel else {"image_url": url}
+    container = call("POST", f"{API}/{ig_id}/media", {**payload, "caption": caption})["id"]
 
-    # Meta recommends checking container status at most once a minute for 5 minutes;
-    # images are usually ready on the first check.
-    for attempt in range(6):
+    # Meta recommends checking container status at most once a minute; images are usually
+    # ready on the first check, videos need a few minutes of processing.
+    checks = 10 if is_reel else 6
+    for attempt in range(checks):
         status = call("GET", f"{API}/{container}?fields=status_code")["status_code"]
         if status == "FINISHED":
             break
         if status in ("ERROR", "EXPIRED"):
             raise SystemExit(f"Container {container} failed: {status}")
-        time.sleep(60 if attempt else 10)
+        time.sleep(60 if attempt else (30 if is_reel else 10))
     else:
-        raise SystemExit(f"Container {container} not ready after 5 minutes")
+        raise SystemExit(f"Container {container} not ready after {checks - 1} minutes")
 
     media_id = call("POST", f"{API}/{ig_id}/media_publish", {"creation_id": container})["id"]
     info = call("GET", f"{API}/{media_id}?fields=permalink,timestamp")
