@@ -16,3 +16,4 @@
 | 2026-10-26 | 05 | 01:42 | 연예 | (정보 카드) 소주병 집어 든 건 인정, "가격한 적은 없다"… 승리 측 합의도 거절 | 09번과 같은 기사 | https://www.instagram.com/p/De7KX-cCdsw/ | - |
 | 2026-10-26 | 06 | 01:42 | 이슈 | (정보 카드) 김포 애기봉에서 맨눈으로 보인다… 남쪽 겨눈 북한 자주포 | 01번과 같은 기사 | https://www.instagram.com/p/De7KaNUlqUm/ | - |
 | 2026-10-26 | 07 | 01:54 | 국제 | 해발 1834m 히틀러 별장 '독수리 둥지' 화재… 용의자 체포 | https://www.hankookilbo.com/news/article/A2026102508300005195 , https://www.bbc.com/korean/articles/c6gr81pz8p2zo , https://www.news1.kr/world/europe/6330636 | https://www.instagram.com/p/De7LtMYFvge/ | https://www.instagram.com/reel/De7Lw3CEdCt/ |
+| 2026-10-26 | 08 | 06:58 자동 | 스포츠 | 올해 진 건 단 1번… 안세영 50연승, 시즌 10번째 우승 | https://www.hankookilbo.com/news/article/A2026102520360005431 , https://m.seoul.co.kr/news/sport/badminton/2026/10/25/20261025500092 | https://www.instagram.com/p/De7ulVIgSRI/ | https://www.instagram.com/reel/De7umrjjDLJ/ |
