@@ -12,3 +12,4 @@
 | 2026-10-26 | 10 | 08:00 예약 | 이슈 | '닥터X' 5·18 회차 방영 중단 청원 | - | 예약 | 예약 |
 | 2026-10-26 | 11 | 10:00 예약 | 정치 | 추미애 "정치적 화형" vs 이준석 "소방만 도발" | - | 예약 | 예약 |
 | 2026-10-26 | 12 | 12:00 예약 | 사건 | 영동고속도로 2차 사고 막던 경찰관 발목 절단 | - | 예약 | 예약 |
+| 2026-10-26 | 01 | 00:31 | 이슈 | 김포에서도 보인다… 북한 자주포, 남쪽 향해 최전방 배치 | https://www.hankookilbo.com/news/article/A2026102519510001041 , https://mobile.newsis.com/view_amp.html?ar_id=NISX20261025_0003840244 | https://www.instagram.com/p/De7CO5yFMe9/ | https://www.instagram.com/reel/De7CRzmlZ-n/ |
