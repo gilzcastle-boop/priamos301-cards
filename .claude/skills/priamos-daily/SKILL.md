@@ -22,7 +22,7 @@ W=$(mktemp -d)                                       # 작업 폴더 (저장소 
 
 - 다음 번호 `NN`: `cards/$D-*.jpg` 중 가장 큰 번호 + 1 (없으면 01). 두 자리.
 - 아래 중 하나라도 해당하면 이번 회차는 건너뛰고 보고만 한다.
-  - `log/posted.md`에 오늘(한국 날짜) 자동 게시가 이미 3건 이상 있다.
+  - `log/posted.md`에 오늘(한국 날짜) 행이 이미 5개 이상 있다(예약·수동 게시 포함, 하루 뉴스 5건 상한).
   - API 게시 한도: `GET https://graph.instagram.com/v26.0/<ig_id>/content_publishing_limit?fields=quota_usage,config`
     (`ig_id`는 `/me?fields=user_id`)의 `quota_usage`가 `config.quota_total`의 절반을 넘었다.
   - 예약 작업 프롬프트가 지금 회차를 건너뛰라고 했다.
