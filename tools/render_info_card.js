@@ -1,7 +1,8 @@
 // Render a 1080x1350 vintage "info card": smaller illustration, ribbon headline and 3-4 numbered key facts.
 //   node tools/render_info_card.js spec.json out.jpg
 // spec: {label, headline ("line 1\n[red line 2]"), facts: [[key, text], ...], image, focus ("50% 45%"),
-//        badge ("right" | "left", keep the label off the main subject), handle, brand, credit,
+//        badge ("right" | "left", keep the label off the main subject), stamp (short red hook word
+//        stamped on the picture, e.g. "국회 청원"), handle, brand, credit,
 //        date (optional, defaults to today in Korean time)}
 const { chromium } = require('playwright');
 const fs = require('fs');
@@ -45,7 +46,10 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
   .badge { position: absolute; ${spec.badge === 'left' ? 'left' : 'right'}: 64px; top: 104px; width: 172px; height: 172px; }
   .badge span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
                 transform: rotate(-10deg); color: var(--paper); font: 900 ${spec.label && spec.label.length > 2 ? 30 : 38}px "Hahmlet", serif; }
-  #head { position: absolute; left: 110px; right: 110px; top: 584px; font: 900 70px/1.3 "Hahmlet", serif; }
+  #head { position: absolute; left: 110px; right: 110px; top: 584px; font: 900 78px/1.28 "Hahmlet", serif; }
+  .stamp { position: absolute; left: 108px; top: 456px; transform: rotate(-7deg); padding: 10px 30px;
+           background: rgba(242,230,203,.88); color: var(--red); font: 900 50px/1.2 "Hahmlet", serif;
+           border: 6px solid var(--red); outline: 2px solid var(--red); outline-offset: -14px; }
   .hl { white-space: nowrap; }
   .rib { background: var(--red); color: var(--paper); padding: 0 26px; margin-left: -26px;
          clip-path: polygon(0 0, 100% 0, calc(100% - 18px) 50%, 100% 100%, 0 100%, 18px 50%); }
@@ -66,6 +70,7 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
   <div class="top"><span>${esc(brand.toUpperCase())} · DAILY ISSUE</span><span>${esc(date)}</span></div>
   <div class="pic"><img src="${img}"></div>
   ${spec.label ? `<div class="badge"><svg width="172" height="172"><polygon points="${star}" fill="#C8352B"/></svg><span>${esc(spec.label)}</span></div>` : ''}
+  ${spec.stamp ? `<div class="stamp">${esc(spec.stamp)}</div>` : ''}
   <div id="head">${headline}</div>
   <ol id="facts">${facts}</ol>
   <div class="foot"></div>
@@ -85,7 +90,7 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
     for (let i = 0; i < 9000; i++) { g.fillStyle = `rgba(90,60,30,${.03 + r() * .06})`; g.fillRect(r() * 1080, r() * 1350, 1 + r() * 2, 1 + r() * 2); }
     // Shrink the headline until every line fits, then the facts until they clear the footer.
     const head = document.getElementById('head'), facts = document.getElementById('facts');
-    let hs = 70;
+    let hs = 78;
     while (hs > 44 && [...head.children].some(l => l.scrollWidth > head.clientWidth)) head.style.fontSize = (hs -= 2) + 'px';
     const bottom = 1350 - 158 - 18;
     let fs = 30;
