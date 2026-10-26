@@ -11,7 +11,7 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@500;700;900&family=Noto+Sans+KR:wght@700;800;900&family=Yellowtail&display=swap"></head>
 <body style="margin:0"><canvas id="c" width="1080" height="1920"></canvas></body></html>`, { waitUntil: 'networkidle' });
   await p.evaluate(async ({ img, spec }) => {
-    const all = [spec.label, spec.stamp || '', spec.line1, spec.line2, ...spec.subs.map(s => s[2]), spec.handle, 'PRIAMOS DAILY ISSUE 0123456789. 그림: AI 생성 연출 이미지 자세한 내용은 캡션에서'].join(' ');
+    const all = [spec.label, spec.stamp || '', spec.line1, spec.line2, ...spec.subs.map(s => s[2]), spec.handle, 'PRIAMOS DAILY ISSUE 0123456789. AI 연출 이미지 팔로우하고 매일 이슈 체크'].join(' ');
     await Promise.all([document.fonts.load('900 80px "Hahmlet"', all), document.fonts.load('700 40px "Hahmlet"', all), document.fonts.load('800 50px "Noto Sans KR"', all), document.fonts.load('900 50px "Noto Sans KR"', all), document.fonts.load('400 120px "Yellowtail"', 'Priamos')]);
     const im = new Image(); im.src = img; await im.decode(); window.IMG = im;
   }, { img, spec });
@@ -122,7 +122,7 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
         x.restore();
       });
     }
-    function credit(t){ if(t > spec.endAt) return; x.font = '700 24px "Noto Sans KR"'; x.fillStyle = 'rgba(255,245,230,.75)'; x.fillText('그림: AI 생성 연출 이미지', 64, H - 64); }
+    function credit(t){ if(t > spec.endAt) return; x.font = '500 18px "Noto Sans KR"'; x.fillStyle = 'rgba(255,245,230,.45)'; x.fillText('AI 연출 이미지', 64, H - 64); }
     function endCard(t){
       const u = ease(prog(t, spec.endAt, spec.endAt + .6)); if(u <= 0) return;
       x.save(); x.globalAlpha = u;
@@ -133,8 +133,8 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
       x.fillStyle = V.red; x.font = '400 190px "Yellowtail"'; x.fillText('Priamos', W / 2, 960);
       x.fillStyle = V.ink; x.fillRect(W / 2 - 230, 1010, 460, 5);
       x.font = '900 52px "Hahmlet"'; x.fillText(spec.handle, W / 2, 1110);
-      x.font = '700 40px "Noto Sans KR"'; x.fillStyle = 'rgba(43,29,20,.8)'; x.fillText('자세한 내용은 캡션에서', W / 2, 1190);
-      x.font = '700 26px "Noto Sans KR"'; x.fillStyle = 'rgba(43,29,20,.6)'; x.fillText('그림: AI 생성 연출 이미지', W / 2, 1700);
+      x.font = '700 40px "Noto Sans KR"'; x.fillStyle = 'rgba(43,29,20,.8)'; x.fillText('팔로우하고 매일 이슈 체크', W / 2, 1190);
+      x.font = '500 18px "Noto Sans KR"'; x.fillStyle = 'rgba(43,29,20,.45)'; x.fillText('AI 연출 이미지', W / 2, 1720);
       x.fillStyle = V.red; starburst(W / 2, 470, 70, 14, Math.sin(t) * .05); x.fillStyle = V.paper; x.font = '900 34px "Hahmlet"'; x.textBaseline = 'middle'; x.fillText(spec.label, W / 2, 474); x.textBaseline = 'alphabetic';
       x.textAlign = 'left'; x.restore();
     }

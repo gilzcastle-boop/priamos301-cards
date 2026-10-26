@@ -2,7 +2,7 @@
 """Publish one card (JPEG + caption .txt) or reel (MP4 + caption .txt) from this repo to Instagram.
 
 Usage: python3 tools/publish.py cards/20261025-01.jpg
-       python3 tools/publish.py cards/20261027-01.jpg --carousel   # cards/20261027-01-c*.jpg, then the card itself
+       python3 tools/publish.py cards/20261027-01.jpg --carousel   # -c*.jpg, the card itself, then -end.jpg
        python3 tools/publish.py reels/20261025-08.mp4
 
 The file must already be pushed to the public repo (Meta fetches it by URL).
@@ -39,8 +39,9 @@ def main():
     url = f"{REPO_RAW}/{img.as_posix()}"
     is_reel = img.suffix.lower() == ".mp4"
     if "--carousel" in sys.argv:
-        # Slides c1..cN (cover and points) followed by the info card as the recap slide.
-        slides = sorted(img.parent.glob(f"{img.stem}-c*.jpg")) + [img]
+        # Slides c1..cN (cover and points), the info card as the recap slide, then the follow slide.
+        end = img.with_name(f"{img.stem}-end.jpg")
+        slides = sorted(img.parent.glob(f"{img.stem}-c*.jpg")) + [img] + ([end] if end.exists() else [])
         if len(slides) < 2:
             raise SystemExit(f"No {img.stem}-c*.jpg slides next to {img}")
         children = [call("POST", f"{API}/{ig_id}/media",
