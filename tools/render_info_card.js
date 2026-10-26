@@ -2,7 +2,7 @@
 //   node tools/render_info_card.js spec.json out.jpg
 // spec: {label, headline ("line 1\n[red line 2]"), facts: [[key, text], ...], image, focus ("50% 45%"),
 //        badge ("right" | "left", keep the label off the main subject), stamp (short red hook word
-//        stamped on the picture, e.g. "국회 청원"), handle, brand, credit,
+//        stamped on the picture, e.g. "국회 청원"), handle, brand, credit (optional small line on the card; off by default),
 //        date (optional, defaults to today in Korean time)}
 const { chromium } = require('playwright');
 const fs = require('fs');
@@ -76,7 +76,7 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
   <div class="foot"></div>
   <div class="logo">${esc(brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase())}</div>
   <div class="handle">${esc(spec.handle || '@priamos301')}</div>
-  <div class="credit">${esc(spec.credit || 'AI 연출 이미지')}</div>
+  ${spec.credit ? `<div class="credit">${esc(spec.credit)}</div>` : ''}
 </div></body></html>`;
 
   const b = await chromium.launch();
