@@ -122,7 +122,7 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
         x.restore();
       });
     }
-    function credit(t){ if(t > spec.endAt) return; x.font = '500 18px "Noto Sans KR"'; x.fillStyle = 'rgba(255,245,230,.45)'; x.fillText('AI 연출 이미지', 64, H - 64); }
+    function credit(t){ if(!spec.credit || t > spec.endAt) return; x.font = '500 18px "Noto Sans KR"'; x.fillStyle = 'rgba(255,245,230,.45)'; x.fillText(spec.credit, 64, H - 64); }
     function endCard(t){
       const u = ease(prog(t, spec.endAt, spec.endAt + .6)); if(u <= 0) return;
       x.save(); x.globalAlpha = u;
@@ -134,7 +134,6 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
       x.fillStyle = V.ink; x.fillRect(W / 2 - 230, 1010, 460, 5);
       x.font = '900 52px "Hahmlet"'; x.fillText(spec.handle, W / 2, 1110);
       x.font = '700 40px "Noto Sans KR"'; x.fillStyle = 'rgba(43,29,20,.8)'; x.fillText('팔로우하고 매일 이슈 체크', W / 2, 1190);
-      x.font = '500 18px "Noto Sans KR"'; x.fillStyle = 'rgba(43,29,20,.45)'; x.fillText('AI 연출 이미지', W / 2, 1720);
       x.fillStyle = V.red; starburst(W / 2, 470, 70, 14, Math.sin(t) * .05); x.fillStyle = V.paper; x.font = '900 34px "Hahmlet"'; x.textBaseline = 'middle'; x.fillText(spec.label, W / 2, 474); x.textBaseline = 'alphabetic';
       x.textAlign = 'left'; x.restore();
     }

@@ -36,7 +36,7 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
   <div class="logo">${esc(brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase())}</div>
   <div class="handle">${esc(spec.handle || '@priamos301')}</div>
   <div class="count">${n} / ${total}</div>
-  <div class="credit">${esc(spec.credit || 'AI 연출 이미지')}</div>`;
+  ${spec.credit ? `<div class="credit">${esc(spec.credit)}</div>` : ''}`;
 
   const cover = `<section class="slide" id="s1">${chrome(1)}
   <div class="pic cover"><img src="${img}" style="object-position:${spec.focus || '50% 50%'}"></div>
@@ -62,7 +62,6 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
   <div class="sub">아침 · 점심 · 퇴근길 · 저녁 · 밤<br>하루 5번, 화제 뉴스만 골라 정리합니다</div>
   <div class="btn">+ 팔로우하고 매일 체크</div>
   <div class="at">${esc(spec.handle || '@priamos301')}</div>
-  <div class="trust">기사 두 곳 이상 교차 확인</div>
   </section>`;
 
   const html = `<!doctype html><html><head><meta charset="utf-8">
@@ -114,7 +113,6 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
               box-shadow: 0 6px 0 var(--ink); }
   #end .at { position: absolute; left: 0; right: 0; top: 1000px; text-align: center; font: 900 40px "Hahmlet", serif; }
   #end .credit, #end .logo, #end .handle { display: none; }
-  #end .trust { position: absolute; left: 0; right: 0; top: 1070px; text-align: center; font: 500 26px "Noto Sans KR", sans-serif; opacity: .6; }
 </style></head><body>${cover}${points}${end}</body></html>`;
 
   const b = await chromium.launch();
