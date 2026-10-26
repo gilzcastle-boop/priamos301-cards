@@ -45,6 +45,17 @@ def main():
             raise SystemExit(f"No {img.stem}-c*.jpg slides next to {img}")
         children = [call("POST", f"{API}/{ig_id}/media",
                          {"image_url": f"{REPO_RAW}/{s.as_posix()}", "is_carousel_item": "true"})["id"] for s in slides]
+        # The album container errors out if it is created before every slide has finished downloading.
+        for child in children:
+            for _ in range(12):
+                status = call("GET", f"{API}/{child}?fields=status_code")["status_code"]
+                if status == "FINISHED":
+                    break
+                if status in ("ERROR", "EXPIRED"):
+                    raise SystemExit(f"Carousel slide container {child} failed: {status}")
+                time.sleep(5)
+            else:
+                raise SystemExit(f"Carousel slide container {child} not ready after a minute")
         payload = {"media_type": "CAROUSEL", "children": ",".join(children)}
     elif is_reel:
         payload = {"media_type": "REELS", "video_url": url, "share_to_feed": "true", "thumb_offset": "4000"}

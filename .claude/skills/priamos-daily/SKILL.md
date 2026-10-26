@@ -101,7 +101,7 @@ W=$(mktemp -d)                                       # 작업 폴더 (저장소 
 - `#이슈 #속보 #뉴스 #릴스 #추천` 같은 일반 태그는 쓰지 않는다.
 - "좋아요·공유·댓글·태그 해 주세요"처럼 목적 없이 반응만 요구하지 않는다(메타 'engagement bait'). 질문이나 안전 행동은 괜찮고, 그래서 linter의 ONE ASK 경고는 무시해도 된다.
 - 점검: `python3 -I .claude/skills/ig-caption/caption.py $W/caption.txt --keywords "검색어1,검색어2"` → `VERDICT READY` 가 될 때까지 고친다.
-- 기계 흔적 정리: `python3 -I .claude/skills/ig-human/humanize.py $W/caption.txt --report` 로 보이지 않는 문자·굽은 따옴표를 지운다(바뀐 내용을 확인하고 덮어쓴다). 한국어 문장은 `detect.py` 점수가 낮게 나오기 쉬우니 점수는 참고만 하고, 같은 길이 문장만 이어지지 않게 짧은 문장을 한두 개 섞는다.
+- 기계 흔적 정리: `python3 -I .claude/skills/ig-human/humanize.py $W/caption.txt --report` 로 보이지 않는 문자·굽은 따옴표가 있는지 본다. 이 도구는 한국어 가운뎃점 `·`을 `-`로 바꾸므로(예: `1·2등` → `1-2등`) 원본은 덮어쓰지 말고, 보고서에 나온 보이지 않는 문자·굽은 따옴표만 원본에서 직접 고친다. 한국어 문장은 `detect.py` 점수가 낮게 나오기 쉬우니 점수는 참고만 하고, 같은 길이 문장만 이어지지 않게 짧은 문장을 한두 개 섞는다.
 - 훅 점검: `python3 -I .claude/skills/ig-reel/hookscore.py --hook "<line1> <line2>"`. **55점** 미만이면 다른 공식으로 다시 쓴다.
 
 ### 2-1. 독립 사실 확인 (fact-checker 에이전트, 그림 전에)
