@@ -58,7 +58,7 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
   <div class="kick">DAILY ISSUE CHECK</div>
   <div class="brand">${esc(brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase())}</div>
   <div class="rule"></div>
-  <div class="lead">오늘의 이슈, 1분이면 끝</div>
+  <div class="lead">오늘의 이슈, 5분이면 끝</div>
   <div class="sub">아침 · 점심 · 퇴근길 · 저녁 · 밤<br>하루 5번, 화제 뉴스만 골라 정리합니다</div>
   <div class="btn">+ 팔로우하고 매일 체크</div>
   <div class="at">${esc(spec.handle || '@priamos301')}</div>
