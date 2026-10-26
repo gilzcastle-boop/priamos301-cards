@@ -63,7 +63,7 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
   .foot { position: absolute; left: 82px; right: 82px; bottom: 158px; border-top: 1.5px solid var(--ink); }
   .logo { position: absolute; left: 92px; bottom: 60px; font: 400 66px "Yellowtail", cursive; color: var(--red); }
   .handle { position: absolute; right: 96px; bottom: 110px; font: 700 24px "Hahmlet", serif; }
-  .credit { position: absolute; right: 96px; bottom: 56px; font: 500 20px "Hahmlet", serif; opacity: .75; }
+  .credit { position: absolute; right: 96px; bottom: 60px; font: 500 15px "Noto Sans KR", sans-serif; opacity: .5; }
 </style></head><body><div id="card">
   <canvas id="grain" width="1080" height="1350"></canvas>
   <div class="frame"></div><div class="frame2"></div>
@@ -76,7 +76,7 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
   <div class="foot"></div>
   <div class="logo">${esc(brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase())}</div>
   <div class="handle">${esc(spec.handle || '@priamos301')}</div>
-  <div class="credit">${esc(spec.credit || '그림: AI 생성 연출 이미지')}</div>
+  <div class="credit">${esc(spec.credit || 'AI 연출 이미지')}</div>
 </div></body></html>`;
 
   const b = await chromium.launch();

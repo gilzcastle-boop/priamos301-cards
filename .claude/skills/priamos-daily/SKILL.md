@@ -95,9 +95,12 @@ W=$(mktemp -d)                                       # 작업 폴더 (저장소 
 
 <마무리 1줄: 열린 질문(예: 여러분은 어떻게 생각하세요?) 또는 목적 있는 행동(예: 사고 현장을 보면 속도를 줄여 주세요)>
 
+그림은 AI로 만든 연출 이미지입니다.
+
 #구체적 #해시태그 #정확히 #다섯 #개
 ```
 - 언론사 이름이나 출처 줄은 넣지 않는다. "경찰에 따르면"처럼 기관 출처는 괜찮다.
+- AI 표시: 캡션의 "그림은 AI로 만든 연출 이미지입니다." 한 줄과, 그림 위 작은 "AI 연출 이미지" 표시(렌더러가 넣는다)를 둘 다 둔다. AI 기본법 표시 의무는 AI 서비스 사업자에게 있고 이용자에게는 없지만(과기정통부 AI 기본법 지원데스크 FAQ), 뉴스 계정이라 실제 사건 사진으로 오해받지 않게 하고, 이미지만 캡처돼 퍼질 때도 표시가 남게 한다. 실존 인물을 사실적으로 그리는 것(딥페이크)은 어떤 경우에도 하지 않는다.
 - `#이슈 #속보 #뉴스 #릴스 #추천` 같은 일반 태그는 쓰지 않는다.
 - "좋아요·공유·댓글·태그 해 주세요"처럼 목적 없이 반응만 요구하지 않는다(메타 'engagement bait'). 질문이나 안전 행동은 괜찮고, 그래서 linter의 ONE ASK 경고는 무시해도 된다.
 - 점검: `python3 -I .claude/skills/ig-caption/caption.py $W/caption.txt --keywords "검색어1,검색어2"` → `VERDICT READY` 가 될 때까지 고친다.
@@ -149,11 +152,11 @@ Figma와 Runway가 모두 실패하거나(Runway 크레딧 8 미만, 유료 플�
 
 ## 4. 렌더
 
-카드는 **5장 캐러셀(카드뉴스)** 로 만든다: 1장 표지 → 2~4장 요점 하나씩 → 5장 정보 카드(한눈에 정리).
+카드는 **6장 캐러셀(카드뉴스)** 로 만든다: 1장 표지 → 2~4장 요점 하나씩 → 5장 정보 카드(한눈에 정리) → 6장 팔로우 장(릴스 끝 화면 같은 디자인, "오늘의 이슈, 1분이면 끝 / + 팔로우하고 매일 체크"). 팔로우 장은 렌더러가 매번 같은 문구로 만든다. 사용자가 "팔로우하게끔 매일 간단 이슈 체크 같은 느낌으로 세련되게"를 원했다.
 단일 이미지는 10-25~26 게시분 11개의 도달이 1~2명(사실상 팔로워만)이라 캐러셀로 바꿨다. 넘기는 동작이 반응으로 잡히고, 프로필에 들어온 사람이 저장하기 좋다.
 **확실하지 않은 사실**: Mosseri가 "캐러셀은 음악이 있어야 추천 대상이 된다"고 했다는 제3자 기록이 있다. 그런데 게시 API로는 캐러셀에 음악을 넣을 수 없다. 그래서 비팔로워 확산은 계속 릴스가 맡는다고 보고, 캐러셀 도달은 priamos-weekly 가 확인한다.
 
-`$W/card.json` 하나로 다섯 장을 다 만든다. `focus`는 그림에서 보일 부분(세로 위치), `badge`는 분류 딱지 위치("right"/"left").
+`$W/card.json` 하나로 여섯 장을 다 만든다. `focus`는 그림에서 보일 부분(세로 위치), `badge`는 분류 딱지 위치("right"/"left").
 딱지(오른쪽 위)와 도장(그림 왼쪽 아래)이 그림의 주인공을 가리면 `focus`나 `badge`를 바꿔 다시 그린다:
 ```json
 {"label": "사건", "stamp": "1월 이어 또", "headline": "2차 사고 막던 경찰관\n[화물차에 치여 발목 절단]",
@@ -167,7 +170,7 @@ Figma와 Runway가 모두 실패하거나(Runway 크레딧 8 미만, 유료 플�
  "image": "<$W/art.png 절대경로>", "focus": "50% 40%", "badge": "right"}
 ```
 ```bash
-NODE_PATH=$(npm root -g) node tools/render_carousel.js $W/card.json cards/$D-$NN      # c1(표지)~c4(요점). "overflow" 가 나오면 요점을 줄인다
+NODE_PATH=$(npm root -g) node tools/render_carousel.js $W/card.json cards/$D-$NN      # c1(표지)~c4(요점), -end(팔로우 장). "overflow" 가 나오면 요점을 줄인다
 NODE_PATH=$(npm root -g) node tools/render_info_card.js $W/card.json cards/$D-$NN.jpg # 5장째. "facts overflow" 가 나오면 사실을 줄인다
 ```
 
@@ -187,7 +190,7 @@ tools/make_reel.sh $W/reel.json reels/$D-$NN.mp4      # 약 1분
 cp $W/caption.txt cards/$D-$NN.txt && cp $W/caption.txt reels/$D-$NN.txt
 ```
 
-게시 전에 눈으로 확인한다: 캐러셀 다섯 장을 열어 보고, 릴스는 아래 시트를 열어 본다. 글자가 잘리거나 넘치면 spec을 고쳐 다시 만든다.
+게시 전에 눈으로 확인한다: 캐러셀 여섯 장을 열어 보고, 릴스는 아래 시트를 열어 본다. 글자가 잘리거나 넘치면 spec을 고쳐 다시 만든다.
 ```bash
 ffmpeg -v error -y -i reels/$D-$NN.mp4 -vf "select='eq(n\,30)+eq(n\,100)+eq(n\,170)+eq(n\,260)',scale=270:480,tile=4x1" -frames:v 1 -vsync vfr $W/sheet.jpg
 ```
@@ -195,7 +198,7 @@ ffmpeg -v error -y -i reels/$D-$NN.mp4 -vf "select='eq(n\,30)+eq(n\,100)+eq(n\,1
 ## 5. 게시
 
 1. `git add cards/$D-$NN* reels/$D-$NN.*` → 커밋(세션의 커밋 서명 규칙을 따른다) → `git push -u origin main`.
-2. 캐러셀 다섯 장(`cards/$D-$NN-c1.jpg`~`-c4.jpg`, `cards/$D-$NN.jpg`)과 릴스 mp4의 `https://raw.githubusercontent.com/gilzcastle-boop/priamos301-cards/main/...` 주소가 모두 200인지 확인한다.
+2. 캐러셀 여섯 장(`cards/$D-$NN-c1.jpg`~`-c4.jpg`, `cards/$D-$NN.jpg`, `cards/$D-$NN-end.jpg`)과 릴스 mp4의 `https://raw.githubusercontent.com/gilzcastle-boop/priamos301-cards/main/...` 주소가 모두 200인지 확인한다.
 3. `/me/media` 에서 같은 캡션 첫 줄이 유형별(CAROUSEL_ALBUM / VIDEO)로 이미 있으면 그 유형은 올리지 않는다.
 4. 캐러셀 먼저, 릴스 나중(릴스가 프로필 맨 위에 오도록):
    ```bash

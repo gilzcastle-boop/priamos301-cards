@@ -1,7 +1,8 @@
 // Render the first slides of a card-news carousel in the info-card style: a big cover and one slide per point.
 //   node tools/render_carousel.js spec.json cards/20261027-01
-// writes <prefix>-c1.jpg (cover) and <prefix>-c2.jpg ... (points). The recap slide is the info card itself
-// (tools/render_info_card.js -> <prefix>.jpg), so tools/publish.py --carousel posts c1..cN then <prefix>.jpg.
+// writes <prefix>-c1.jpg (cover), <prefix>-c2.jpg ... (points) and <prefix>-end.jpg (follow slide, styled like the
+// reel's end card). The recap slide is the info card itself (tools/render_info_card.js -> <prefix>.jpg), so
+// tools/publish.py --carousel posts c1..cN, then <prefix>.jpg, then <prefix>-end.jpg.
 // spec: the info-card spec plus points: [[kicker, title, body], ...] (3 points: what happened, the detail,
 //       what next / the other side). title up to ~16 chars per line, body up to ~70 chars.
 const { chromium } = require('playwright');
@@ -16,7 +17,7 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
   const kst = new Date(Date.now() + 9 * 3600e3);
   const date = spec.date || `${kst.getUTCFullYear()}. ${kst.getUTCMonth() + 1}. ${kst.getUTCDate()}.`;
   const brand = spec.brand || 'PRIAMOS';
-  const total = spec.points.length + 2;
+  const total = spec.points.length + 3;
   const headline = spec.headline.split('\n').map(line =>
     '<div class="hl">' + esc(line).replace(/\[([^\]]+)\]/g, '<span class="rib">$1</span>') + '</div>').join('');
   const star = Array.from({ length: 28 }, (_, i) => {
@@ -35,7 +36,7 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
   <div class="logo">${esc(brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase())}</div>
   <div class="handle">${esc(spec.handle || '@priamos301')}</div>
   <div class="count">${n} / ${total}</div>
-  <div class="credit">${esc(spec.credit || '그림: AI 생성 연출 이미지')}</div>`;
+  <div class="credit">${esc(spec.credit || 'AI 연출 이미지')}</div>`;
 
   const cover = `<section class="slide" id="s1">${chrome(1)}
   <div class="pic cover"><img src="${img}" style="object-position:${spec.focus || '50% 50%'}"></div>
@@ -52,6 +53,17 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
   <div class="ptitle">${esc(title).replace(/\n/g, '<br>')}</div>
   <div class="pbody">${esc(body)}</div>
   </section>`).join('');
+
+  const end = `<section class="slide" id="end">${chrome(total)}
+  <div class="kick">DAILY ISSUE CHECK</div>
+  <div class="brand">${esc(brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase())}</div>
+  <div class="rule"></div>
+  <div class="lead">오늘의 이슈, 1분이면 끝</div>
+  <div class="sub">아침 · 점심 · 퇴근길 · 저녁 · 밤<br>하루 5번, 화제 뉴스만 골라 정리합니다</div>
+  <div class="btn">+ 팔로우하고 매일 체크</div>
+  <div class="at">${esc(spec.handle || '@priamos301')}</div>
+  <div class="trust">기사 두 곳 이상 교차 확인</div>
+  </section>`;
 
   const html = `<!doctype html><html><head><meta charset="utf-8">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@500;700;900&family=Noto+Sans+KR:wght@500;700;900&family=Yellowtail&display=swap">
@@ -91,8 +103,19 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
   .logo { position: absolute; left: 92px; bottom: 60px; font: 400 66px "Yellowtail", cursive; color: var(--red); }
   .handle { position: absolute; right: 96px; bottom: 110px; font: 700 24px "Hahmlet", serif; }
   .count { position: absolute; right: 96px; bottom: 60px; font: 700 26px "Hahmlet", serif; letter-spacing: 2px; }
-  .credit { position: absolute; left: 96px; bottom: 176px; font: 500 20px "Hahmlet", serif; opacity: .75; }
-</style></head><body>${cover}${points}</body></html>`;
+  .credit { position: absolute; left: 96px; bottom: 172px; font: 500 15px "Noto Sans KR", sans-serif; opacity: .5; }
+  #end .kick { position: absolute; left: 0; right: 0; top: 250px; text-align: center; font: 700 30px "Hahmlet", serif; letter-spacing: 10px; }
+  #end .brand { position: absolute; left: 0; right: 0; top: 300px; text-align: center; font: 400 170px/1.1 "Yellowtail", cursive; color: var(--red); }
+  #end .rule { position: absolute; left: 330px; right: 330px; top: 520px; border-top: 5px solid var(--ink); }
+  #end .lead { position: absolute; left: 0; right: 0; top: 580px; text-align: center; font: 900 64px/1.3 "Hahmlet", serif; }
+  #end .sub { position: absolute; left: 0; right: 0; top: 690px; text-align: center; font: 500 34px/1.6 "Noto Sans KR", sans-serif; opacity: .85; }
+  #end .btn { position: absolute; left: 50%; top: 860px; transform: translateX(-50%); white-space: nowrap; padding: 26px 64px;
+              background: var(--red); color: var(--paper); border-radius: 999px; font: 900 42px "Noto Sans KR", sans-serif;
+              box-shadow: 0 6px 0 var(--ink); }
+  #end .at { position: absolute; left: 0; right: 0; top: 1000px; text-align: center; font: 900 40px "Hahmlet", serif; }
+  #end .credit, #end .logo, #end .handle { display: none; }
+  #end .trust { position: absolute; left: 0; right: 0; top: 1070px; text-align: center; font: 500 26px "Noto Sans KR", sans-serif; opacity: .6; }
+</style></head><body>${cover}${points}${end}</body></html>`;
 
   const b = await chromium.launch();
   const p = await b.newPage({ viewport: { width: 1080, height: 1350 } });
@@ -128,6 +151,9 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
   console.log(fit.join(', '));
   if (fit.some(r => r.includes('OVERFLOW'))) console.error('point text overflow - shorten it');
   const slides = await p.locator('.slide').all();
-  for (let i = 0; i < slides.length; i++) await slides[i].screenshot({ path: `${prefix}-c${i + 1}.jpg`, type: 'jpeg', quality: 92 });
+  for (let i = 0; i < slides.length; i++) {
+    const name = i === slides.length - 1 ? `${prefix}-end.jpg` : `${prefix}-c${i + 1}.jpg`;
+    await slides[i].screenshot({ path: name, type: 'jpeg', quality: 92 });
+  }
   await b.close();
 })();
