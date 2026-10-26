@@ -22,7 +22,7 @@ W=$(mktemp -d)                                       # 작업 폴더 (저장소 
 
 - 다음 번호 `NN`: `cards/$D-*.jpg` 중 가장 큰 번호 + 1 (없으면 01). 두 자리.
 - 아래 중 하나라도 해당하면 이번 회차는 건너뛰고 보고만 한다.
-  - `log/posted.md`에서 오늘(한국 날짜) 시각 칸에 `자동`이 붙은 행이 이미 3개 이상 있다(사용자가 직접 요청한 게시는 세지 않는다).
+  - `log/posted.md`에서 오늘(한국 날짜) 시각 칸에 `자동`이 붙은 행이 이미 5개 이상 있다(사용자가 직접 요청한 게시는 세지 않는다).
   - API 게시 한도: `GET https://graph.instagram.com/v26.0/<ig_id>/content_publishing_limit?fields=quota_usage,config`
     (`ig_id`는 `/me?fields=user_id`)의 `quota_usage`가 `config.quota_total`의 절반을 넘었다.
   - 예약 작업 프롬프트가 지금 회차를 건너뛰라고 했다.
@@ -165,5 +165,5 @@ ffmpeg -v error -y -i reels/$D-$NN.mp4 -vf "select='eq(n\,30)+eq(n\,150)+eq(n\,3
 
 ## 하지 않는 것
 
-게시물 삭제, 프로필 변경, 댓글·DM, 그림 없는 게시, 출처 2곳 확인 없는 게시, 하루 자동 3건 초과.
+게시물 삭제, 프로필 변경, 댓글·DM, 그림 없는 게시, 출처 2곳 확인 없는 게시, 하루 자동 5건 초과.
 사용자가 "자동 게시 멈춰"라고 하면 `list_triggers` 로 "자동 뉴스 게시" 예약을 찾아 `update_trigger` 로 `enabled: false` 로 바꾼다.
