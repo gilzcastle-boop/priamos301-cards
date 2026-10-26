@@ -108,7 +108,19 @@ RULES (그대로 쓴다):
 Many small, carefully drawn details. Wide 3:2 composition. Absolutely no text, letters, numbers, logos or watermarks anywhere. No real or famous people. No blood or gore.
 ```
 장면은 사건의 순간이나 상징(장소, 물건, 원래 창작 인물)으로 그린다. 정치인·연예인 본인은 그리지 않는다.
-Figma가 실패하거나 크레딧이 부족하면 그림 없이 게시하지 말고 건너뛴다.
+
+### 3-1. 예비: Runway (Figma가 안 될 때만, 1장에 8크레딧)
+
+사용자가 "런웨이 예비로 붙여놔"라고 승인했다. **Figma가 오류를 내거나 크레딧이 부족할 때, 또는 Figma 그림이 다시 그려도 4번 검사를 통과하지 못할 때만** 쓴다. Figma가 되면 Runway는 쓰지 않는다(무료 플랜이라 크레딧이 다시 채워지지 않는다).
+1. `mcp__runway__generate_image` — model `gen-4`, ratio `4:3`, promptText = 위 STYLE + `\nScene: <장면>` + RULES (같은 문장 그대로).
+   다른 모델(Seedream 등)은 무료 플랜에서 막혀 있으니 바꾸지 않는다.
+2. `mcp__runway__get_task` (id = 1번의 taskId) 를 20~30초 간격으로 불러 `SUCCEEDED`(그림이 보이는 응답)가 될 때까지 기다린다. 보통 1분 안팎.
+   그림은 `~/.claude/projects/*/*/tool-results/mcp-runway-blob-*.jpg` 중 가장 최근 파일(1440x1080)로 저장된다. 응답의 cloudfront 주소는 네트워크에서 막혀 있으니 내려받으려 하지 않는다.
+3. `python3 tools/fit_art.py <그 jpg> $W/art.png 0.5` → 1536x1024로 잘라 맞춘다(세 번째 값은 남길 세로 위치, 0 위 ~ 1 아래).
+4. 위 4번과 같은 기준으로 그림을 직접 열어 본다. Runway는 한 번만 시도한다.
+
+Figma와 Runway가 모두 실패하거나(Runway 크레딧 8 미만, 유료 플랜 필요 오류 포함) 그림이 검사를 통과하지 못하면 그림 없이 게시하지 말고 건너뛴다.
+보고에는 어느 도구로 그렸는지(Figma / Runway 예비)와 Runway를 썼다면 남은 크레딧(`get_task`/`generate_image` 응답의 `creditsRemaining`)을 적는다.
 
 ## 4. 렌더
 
