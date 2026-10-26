@@ -19,5 +19,5 @@ else
   python3 "$here/bgm.py" "$mood" "$dur" "$work/bed.wav" "$hits"
 fi
 ffmpeg -y -hide_banner -loglevel error -framerate 30 -i "$work/frames/f%04d.jpg" -i "$work/bed.wav" \
-  -c:v libx264 -pix_fmt yuv420p -profile:v high -level 4.1 -preset medium -crf 20 -r 30 \
+  -c:v libx264 -pix_fmt yuv420p -profile:v high -level 4.1 -preset slow -crf 25 -maxrate 3M -bufsize 6M -r 30 \
   -c:a aac -b:a 128k -ar 48000 -shortest -movflags +faststart "$out"

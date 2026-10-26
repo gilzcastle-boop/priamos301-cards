@@ -1,0 +1,15 @@
+Third-party code in this repository
+
+.claude/skills/ig-audit, ig-caption, ig-carousel, ig-comment, ig-dm, ig-human, ig-plan,
+ig-profile, ig-reel, ig-reply, ig-repurpose, ig-story, ig-viral
+  Source: https://github.com/Jakeschincariol/instagram-agent-skill
+  Copyright (c) 2026 Jake Schincariol, MIT License (full text: instagram-agent-skill-LICENSE)
+  Modified for this account: Korean-language support in ig-caption/caption.py,
+  ig-reel/hookscore.py and ig-reel/beats.py, Korean voice notes in voice.md files.
+
+Fonts (not stored in this repository; loaded from Google Fonts at render time)
+  Hahmlet, Noto Sans KR, Noto Serif KR, Black Han Sans, IBM Plex Mono, Anton: SIL Open Font License 1.1
+  Yellowtail: Apache License 2.0
+
+Background music in reels is synthesised from scratch by tools/bgm.py and tools/lofi.py
+(no samples, no licensed recordings).
