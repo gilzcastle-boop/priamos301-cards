@@ -111,7 +111,7 @@ Many small, carefully drawn details. Wide 3:2 composition. Absolutely no text, l
 
 ### 3-1. 예비: Runway (Figma가 안 될 때만, 1장에 8크레딧)
 
-> **지금은 쓰지 않는다.** 사용자가 Runway 그림을 보고 "그림체가 너무 다르자나"라고 해서 그림체 맞추기를 시험 중이다. 이 줄이 남아 있으면 Figma가 실패한 회차는 Runway로 넘어가지 말고 건너뛴다.
+> **쓰지 않는다.** 사용자가 Runway 그림을 보고 "그림체가 너무 다르자나", 이어서 "됐다 필요하면 유료로 전환할게"라고 했다. Figma가 실패한 회차는 Runway로 넘어가지 말고 건너뛴다. 사용자가 다시 켜라고 할 때만 아래 절차를 쓴다(그때는 `assets/style-ref-1.jpg`, `style-ref-2.jpg` 를 raw.githubusercontent 주소로 referenceImages 에 넣어 그림체를 맞춘다).
 
 사용자가 "런웨이 예비로 붙여놔"라고 승인했다. **Figma가 오류를 내거나 크레딧이 부족할 때, 또는 Figma 그림이 다시 그려도 4번 검사를 통과하지 못할 때만** 쓴다. Figma가 되면 Runway는 쓰지 않는다(무료 플랜이라 크레딧이 다시 채워지지 않는다).
 1. `mcp__runway__generate_image` — model `gen-4`, ratio `4:3`, promptText = 위 STYLE + `\nScene: <장면>` + RULES (같은 문장 그대로).
