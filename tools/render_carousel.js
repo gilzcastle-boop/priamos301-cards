@@ -34,7 +34,8 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
   <div class="foot"></div>
   <div class="logo">${esc(brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase())}</div>
   <div class="handle">${esc(spec.handle || '@priamos301')}</div>
-  <div class="count">${n} / ${total}</div>`;
+  <div class="count">${n} / ${total}</div>
+  <div class="credit">${esc(spec.credit || '그림: AI 생성 연출 이미지')}</div>`;
 
   const cover = `<section class="slide" id="s1">${chrome(1)}
   <div class="pic cover"><img src="${img}" style="object-position:${spec.focus || '50% 50%'}"></div>
@@ -90,6 +91,7 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
   .logo { position: absolute; left: 92px; bottom: 60px; font: 400 66px "Yellowtail", cursive; color: var(--red); }
   .handle { position: absolute; right: 96px; bottom: 110px; font: 700 24px "Hahmlet", serif; }
   .count { position: absolute; right: 96px; bottom: 60px; font: 700 26px "Hahmlet", serif; letter-spacing: 2px; }
+  .credit { position: absolute; left: 96px; bottom: 176px; font: 500 20px "Hahmlet", serif; opacity: .75; }
 </style></head><body>${cover}${points}</body></html>`;
 
   const b = await chromium.launch();
