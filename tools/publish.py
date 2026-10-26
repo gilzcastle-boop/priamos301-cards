@@ -2,6 +2,7 @@
 """Publish one card (JPEG + caption .txt) or reel (MP4 + caption .txt) from this repo to Instagram.
 
 Usage: python3 tools/publish.py cards/20261025-01.jpg
+       python3 tools/publish.py cards/20261027-01.jpg --carousel   # cards/20261027-01-c*.jpg, then the card itself
        python3 tools/publish.py reels/20261025-08.mp4
 
 The file must already be pushed to the public repo (Meta fetches it by URL).
@@ -37,7 +38,18 @@ def main():
 
     url = f"{REPO_RAW}/{img.as_posix()}"
     is_reel = img.suffix.lower() == ".mp4"
-    payload = {"media_type": "REELS", "video_url": url, "share_to_feed": "true", "thumb_offset": "4000"} if is_reel else {"image_url": url}
+    if "--carousel" in sys.argv:
+        # Slides c1..cN (cover and points) followed by the info card as the recap slide.
+        slides = sorted(img.parent.glob(f"{img.stem}-c*.jpg")) + [img]
+        if len(slides) < 2:
+            raise SystemExit(f"No {img.stem}-c*.jpg slides next to {img}")
+        children = [call("POST", f"{API}/{ig_id}/media",
+                         {"image_url": f"{REPO_RAW}/{s.as_posix()}", "is_carousel_item": "true"})["id"] for s in slides]
+        payload = {"media_type": "CAROUSEL", "children": ",".join(children)}
+    elif is_reel:
+        payload = {"media_type": "REELS", "video_url": url, "share_to_feed": "true", "thumb_offset": "4000"}
+    else:
+        payload = {"image_url": url}
     container = call("POST", f"{API}/{ig_id}/media", {**payload, "caption": caption})["id"]
 
     # Meta recommends checking container status at most once a minute; images are usually
