@@ -26,6 +26,7 @@ W=$(mktemp -d)                                       # 작업 폴더 (저장소 
   - API 게시 한도: `GET https://graph.instagram.com/v26.0/<ig_id>/content_publishing_limit?fields=quota_usage,config`
     (`ig_id`는 `/me?fields=user_id`)의 `quota_usage`가 `config.quota_total`의 절반을 넘었다.
   - 예약 작업 프롬프트가 지금 회차를 건너뛰라고 했다.
+  - **그림을 받을 길이 없다**: `curl -s -o /dev/null -w '%{http_code}' --max-time 15 https://www.figma.com/` 이 `000`(네트워크 정책 차단)이고, `log/figma-status.md` 의 `screenshot_blocked_until` 날짜가 오늘(한국) 이후다. 기사·사실 확인·그림 크레딧을 쓰기 전에 여기서 멈춘다. 두 조건 중 하나라도 풀리면 진행한다.
 
 ## 1. 뉴스 고르기
 
@@ -119,8 +120,10 @@ W=$(mktemp -d)                                       # 작업 폴더 (저장소 
 
 1. `create_session` — fileKey `4QiH37pw3t7wlqYLwdE1xQ`, description에 오늘 장면 요약.
 2. `generate_image` — fileKey 같음, sessionId, model `gpt-image-2.5-sunburst`, width 1536, height 1024, prompt = 아래 STYLE + `\nScene: <장면>` + RULES.
-3. `get_screenshot` — fileKey, nodeId(2번 결과), sessionId, maxDimension 1536, enableBase64Response true, contentsOnly true.
-   PNG는 `~/.claude/projects/*/*/tool-results/mcp-Figma-blob-*.png` 중 가장 최근 파일로 저장된다. `$W/art.png` 로 복사하고 1536x1024인지 확인한다.
+3. 원본 받기. **먼저** `curl -f -L --max-time 60 -o $W/art.png "<2번 결과의 image.url>"` 을 시도한다(`generate_image` 는 Figma MCP 호출 한도에 세지 않으므로 이 길은 한도와 무관하다. 단 www.figma.com 이 환경 네트워크에서 허용돼야 한다).
+   curl 이 실패하면 `get_screenshot` — fileKey, nodeId(2번 결과), sessionId, maxDimension 1536, enableBase64Response true, contentsOnly true.
+   PNG는 `~/.claude/projects/*/*/tool-results/mcp-Figma-blob-*.png` 중 가장 최근 파일로 저장된다(256px 짜리 `.jpg` 는 미리보기라 쓰지 않는다). `$W/art.png` 로 복사하고 1536x1024인지 확인한다.
+   `get_screenshot` 이 "tool call limit"(Starter 플랜은 읽기 호출 월 20회, developers.figma.com/docs/figma-mcp-server/rate-limits-access)로 막히면 `log/figma-status.md` 의 `screenshot_blocked_until` 을 다음 달 1일로 적고 커밋한 뒤 이번 회차를 건너뛴다(한도가 풀리는 정확한 날짜는 확실하지 않다).
 4. 그림을 직접 열어 본다. 글자가 섞였거나, 실존 인물·알려진 캐릭터·실제 시설처럼 보이거나, 피가 보이면 한 번만 다시 만든다. 그래도 안 되면 건너뛴다.
 5. 실제로 쓴 그림의 프롬프트 전체를 `log/prompts/$D-$NN.txt` 에 저장한다(다시 그렸으면 마지막 것).
 
