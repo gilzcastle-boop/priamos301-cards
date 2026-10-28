@@ -202,7 +202,7 @@ ffmpeg -v error -y -i reels/$D-$NN.mp4 -vf "select='eq(n\,30)+eq(n\,100)+eq(n\,1
 1. `git add cards/$D-$NN* reels/$D-$NN.* log/prompts/$D-$NN.txt` → 커밋(세션의 커밋 서명 규칙을 따른다) → `git push -u origin main`.
 2. 캐러셀 여섯 장(`cards/$D-$NN-c1.jpg`~`-c4.jpg`, `cards/$D-$NN.jpg`, `cards/$D-$NN-end.jpg`)과 릴스 mp4의 `https://raw.githubusercontent.com/gilzcastle-boop/priamos301-cards/main/...` 주소가 모두 200인지 확인한다.
 3. `/me/media` 에서 같은 캡션 첫 줄이 유형별(CAROUSEL_ALBUM / VIDEO)로 이미 있으면 그 유형은 올리지 않는다.
-4. 캐러셀 먼저, 릴스 나중(릴스가 프로필 맨 위에 오도록):
+4. 캐러셀 먼저, 릴스 나중. 릴스는 `share_to_feed=false` 로 올려 **릴스 칸에만** 나오고 게시물 칸에는 캐러셀만 남는다(사용자 결정 "릴스는 릴스 칸에만", 2026-10-28):
    ```bash
    python3 tools/publish.py cards/$D-$NN.jpg --carousel
    python3 tools/publish.py reels/$D-$NN.mp4     # 처리에 몇 분 걸림, 백그라운드로
