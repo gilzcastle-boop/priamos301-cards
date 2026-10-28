@@ -59,7 +59,8 @@ def main():
                 raise SystemExit(f"Carousel slide container {child} not ready after a minute")
         payload = {"media_type": "CAROUSEL", "children": ",".join(children)}
     elif is_reel:
-        payload = {"media_type": "REELS", "video_url": url, "share_to_feed": "true", "thumb_offset": "4000"}
+        # share_to_feed=false keeps reels in the Reels tab only, so the profile grid shows each story once (user request, 2026-10-28)
+        payload = {"media_type": "REELS", "video_url": url, "share_to_feed": "false", "thumb_offset": "4000"}
     else:
         payload = {"image_url": url}
     container = call("POST", f"{API}/{ig_id}/media", {**payload, "caption": caption})["id"]
