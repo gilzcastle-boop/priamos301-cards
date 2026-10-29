@@ -137,6 +137,7 @@ RULES (그대로 쓴다):
 Many small, carefully drawn details. Wide 3:2 composition. Absolutely no text, letters, numbers, logos or watermarks anywhere. No real or famous people. No blood or gore.
 ```
 장면은 사건의 순간이나 상징(장소, 물건, 원래 창작 인물)으로 그린다. 정치인·연예인 본인은 그리지 않는다.
+글자가 잘 생기는 물건(간판, 포스터·액자 속 글귀, 종이·서류·봉투, 모니터·TV 테두리, 번호판, 책 표지, 상품 포장)은 장면에 넣지 않는다. 10-28~29 그림에서 이런 곳에 글자 모양이 자주 생겨 다시 그리거나 회차를 건너뛰었다.
 
 ### 3-1. 예비: Runway (Figma가 안 될 때만, 1장에 8크레딧)
 
