@@ -125,6 +125,7 @@ W=$(mktemp -d)                                       # 작업 폴더 (저장소 
    PNG는 `~/.claude/projects/*/*/tool-results/mcp-Figma-blob-*.png` 중 가장 최근 파일로 저장된다(256px 짜리 `.jpg` 는 미리보기라 쓰지 않는다). `$W/art.png` 로 복사하고 1536x1024인지 확인한다.
    `get_screenshot` 이 "tool call limit"(Starter 플랜은 읽기 호출 월 20회, developers.figma.com/docs/figma-mcp-server/rate-limits-access)로 막히면 `log/figma-status.md` 의 `screenshot_blocked_until` 을 다음 달 1일로 적고 커밋한 뒤 이번 회차를 건너뛴다(한도가 풀리는 정확한 날짜는 확실하지 않다).
 4. 그림을 직접 열어 본다. 글자가 섞였거나, 실존 인물·알려진 캐릭터·실제 시설처럼 보이거나, 피가 보이면 한 번만 다시 만든다. 그래도 안 되면 건너뛴다.
+   작은 글자(번호판·간판 등)라도 지우거나 덧칠하지 말고 다시 그린다(사용자 결정 "규칙대로 그려", 2026-10-29). 다시 그릴 때는 프롬프트에서 그 물건을 빼거나 "blank"로 적는다.
 5. 실제로 쓴 그림의 프롬프트 전체를 `log/prompts/$D-$NN.txt` 에 저장한다(다시 그렸으면 마지막 것).
 
 STYLE (그대로 쓴다):
