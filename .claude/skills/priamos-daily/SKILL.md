@@ -128,7 +128,13 @@ W=$(mktemp -d)                                       # 작업 폴더 (저장소 
    curl 이 실패하면 `get_screenshot` — fileKey, nodeId(2번 결과), sessionId, maxDimension 1536, enableBase64Response true, contentsOnly true.
    PNG는 `~/.claude/projects/*/*/tool-results/mcp-Figma-blob-*.png` 중 가장 최근 파일로 저장된다(256px 짜리 `.jpg` 는 미리보기라 쓰지 않는다). `$W/art.png` 로 복사하고 1536x1024인지 확인한다.
    `get_screenshot` 이 "tool call limit"(Starter 플랜은 읽기 호출 월 20회, developers.figma.com/docs/figma-mcp-server/rate-limits-access)로 막히면 `log/figma-status.md` 의 `screenshot_blocked_until` 을 다음 달 1일로 적고 커밋한 뒤 이번 회차를 건너뛴다(한도가 풀리는 정확한 날짜는 확실하지 않다).
-4. 그림을 직접 열어 본다. 글자가 섞였거나, 실존 인물·알려진 캐릭터·실제 시설처럼 보이거나, 피가 보이면 한 번만 다시 만든다. 그래도 안 되면 건너뛴다.
+4. 그림을 직접 열어 본다(전체 + 네 구역 확대 + 작은 물건 확대). 다음 중 하나라도 있으면 한 번만 다시 만든다. 그래도 안 되면 건너뛴다.
+   - 글자가 섞였다.
+   - 실존 인물·알려진 캐릭터·실제 시설·명소처럼 보인다.
+   - 배경 속에 사람 얼굴 형체가 있다.
+   - 날씨나 계절이 기사와 어긋난다.
+   - 사진처럼 사실적인 화풍이다.
+   - 피가 보인다.
    작은 글자(번호판·간판 등)라도 지우거나 덧칠하지 말고 다시 그린다(사용자 결정 "규칙대로 그려", 2026-10-29). 다시 그릴 때는 프롬프트에서 그 물건을 빼거나 "blank"로 적는다.
 5. 실제로 쓴 그림의 프롬프트 전체를 `log/prompts/$D-$NN.txt` 에 저장한다(다시 그렸으면 마지막 것).
 
@@ -141,7 +147,32 @@ RULES (그대로 쓴다):
 Many small, carefully drawn details. Wide 3:2 composition. Absolutely no text, letters, numbers, logos or watermarks anywhere. No real or famous people. No blood or gore.
 ```
 장면은 사건의 순간이나 상징(장소, 물건, 원래 창작 인물)으로 그린다. 정치인·연예인 본인은 그리지 않는다.
-글자가 잘 생기는 물건(간판, 포스터·액자 속 글귀, 종이·서류·봉투, 모니터·TV 테두리, 번호판, 책 표지, 상품 포장)은 장면에 넣지 않는다. 10-28~29 그림에서 이런 곳에 글자 모양이 자주 생겨 다시 그리거나 회차를 건너뛰었다.
+
+**그리지 않는 것 (고정 목록, 사용자 승인 2026-11-07 "123 다 진행해")**
+근거: 10/26~11/7 그림 61장 중 12장을 다시 그렸다. 원인은 글자가 생기는 물건 6, 실제 명소 4, 사진·배경 속 사람 형체 2, 기사와 어긋난 날씨 1, 사진 같은 화풍 1이었다(겹침 있음, `log/prompts/*.txt`).
+세부만 금지하면("no license plate") 그래도 생겼다(10/31, 11/7). 그래서 **물건 자체를 장면에서 뺀다.**
+1. 글자가 잘 생기는 물건
+   - 간판·표지판·게시판, 포스터·액자·사진, 종이·서류·봉투·책
+   - 모니터·TV·휴대폰 화면, 디지털 표시창·조작판·스위치·시계 숫자판, 카메라·기계 장치
+   - 공의 실밥, 상품 포장·병 라벨
+   - 차량은 이야기에 꼭 필요할 때만 넣고 "plain, unmarked, no license plate, no markings"로 적는다.
+2. 실제 명소: 탑(남산서울타워 등), 유명한 다리·건물·궁, 알아볼 수 있는 산·바위 지형(모뉴먼트 밸리 같은 것). 먼 배경은 이름 없는 아파트·낮은 둥근 언덕·하늘로 채운다.
+3. 사람 형체: 사진·액자·창문 반사·나무 무늬 속 얼굴. 사람이 필요 없는 장면은 "No people."을 적는다.
+4. 기사와 어긋나는 것: 날씨·계절·시간대를 기사에 맞춘다(예: 예보에 없는 눈 금지).
+5. 사진 같은 화풍: Scene 첫 문장을 아래 고정 문장으로 시작한다.
+
+Scene 은 이렇게 짠다. `<...>` 만 바꾸고 나머지는 그대로 쓴다.
+```
+Scene: Clearly a hand-drawn anime background painting, not a photo: every shape has a visible ink outline and flat cel color. <장면 설명>. <분위기> mood. No people. No signs, no posters, no picture frames or photos, no papers or books, no screens or digital displays, no machines with panels or switches, no packaging or labels, no famous towers, bridges, buildings or landmarks, no faces anywhere in the background, no characters of any language anywhere.
+```
+(사람이 필요한 장면이면 "No people."만 빼고, 그 사람은 원래 창작 인물로 그린다.)
+
+**배경 나라 맞추기 (사용자 승인 2026-11-07)**
+- 한국에서 일어난 이야기는 장면 설명에 한국 배경을 적는다.
+  - 예: "in an ordinary Korean apartment complex", "a narrow Korean market alley", "a Korean residential street".
+  - 11/3 스카프 아저씨 그림은 "Korean"을 안 적어서 남유럽 골목처럼 나왔다.
+- 이때 "Korean city"만 적으면 남산서울타워가 따라 나왔다(11/5, 11/7). 그래서 위 고정 문장의 "no famous towers … landmarks"를 빼지 않는다. 먼 배경은 "plain, unnamed apartment blocks"로 적는다.
+- 해외 이야기는 그 나라의 평범한 동네로 그린다. 같은 명소 금지를 지킨다.
 
 ### 3-1. 예비: Runway (Figma가 안 될 때만, 1장에 8크레딧)
 
