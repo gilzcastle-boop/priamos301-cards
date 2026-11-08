@@ -36,7 +36,7 @@ const MASCOT_END = '매일 5번 물어다 줄게요!';
   const strips = ['25%', '55%', '85%'];
   const mascotPose = spec.mascot && MASCOT_SAY[spec.mascot] ? spec.mascot : null;
   const mascotSrc = pose => 'data:image/png;base64,' +
-    fs.readFileSync(path.join(__dirname, '..', 'assets', 'mascot', `${pose}.png`)).toString('base64');
+    fs.readFileSync(path.join(spec.mascotDir || path.join(__dirname, '..', 'assets', 'mascot'), `${pose}.png`)).toString('base64');
 
   const chrome = n => `
   <canvas class="grain" width="1080" height="1350"></canvas>

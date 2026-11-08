@@ -8,7 +8,7 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
   // Mascot "프리" (assets/mascot/*.png). Optional: spec.mascot = calm|surprised|sad|happy|curious.
   const SAY = { calm: '이 소식 들었어?', surprised: '헉, 이게 무슨 일?', sad: '마음이 무거워요', happy: '반가운 소식!', curious: '어떻게 된 걸까?' };
   const pose = spec.mascot && SAY[spec.mascot] ? spec.mascot : null;
-  const m64 = n => 'data:image/png;base64,' + fs.readFileSync(path.join(__dirname, '..', 'assets', 'mascot', `${n}.png`)).toString('base64');
+  const m64 = n => 'data:image/png;base64,' + fs.readFileSync(path.join(spec.mascotDir || path.join(__dirname, '..', 'assets', 'mascot'), `${n}.png`)).toString('base64');
   spec.mascotOn = !!pose;
   spec.mascotSay = pose ? (spec.mascotSay || SAY[pose]) : '';
   spec.mascotEnd = '매일 5번 물어다 줄게요!';
