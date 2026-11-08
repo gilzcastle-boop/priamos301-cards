@@ -11,7 +11,7 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
   const m64 = n => 'data:image/png;base64,' + fs.readFileSync(path.join(spec.mascotDir || path.join(__dirname, '..', 'assets', 'mascot'), `${n}.png`)).toString('base64');
   spec.mascotOn = !!pose;
   spec.mascotSay = pose ? (spec.mascotSay || SAY[pose]) : '';
-  spec.mascotEnd = '매일 5번 물어다 줄게요!';
+  spec.mascotEnd = '매일 5번 소식 전해 줄게요!';
   const mascot = pose ? { pose: m64(pose), end: m64('happy') } : null;
   const b = await chromium.launch(); const p = await b.newPage();
   p.on('pageerror', e => console.error('pageerror', e.message));

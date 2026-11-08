@@ -15,7 +15,7 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
 // Mascot "프리" (original magpie, assets/mascot/*.png). Optional: spec.mascot = calm|surprised|sad|happy|curious.
 const MASCOT_SAY = { calm: '이 소식 들었어?', surprised: '헉, 이게 무슨 일?', sad: '마음이 무거워요',
                      happy: '반가운 소식!', curious: '어떻게 된 걸까?' };
-const MASCOT_END = '매일 5번 물어다 줄게요!';
+const MASCOT_END = '매일 5번 소식 전해 줄게요!';
 
 (async () => {
   const [specPath, prefix] = process.argv.slice(2);
@@ -137,7 +137,7 @@ const MASCOT_END = '매일 5번 물어다 줄게요!';
   .say::after { content: ""; position: absolute; right: -20px; top: 50%; margin-top: -12px; border: 12px solid transparent;
                 border-left: 18px solid var(--ink); border-right: 0; }
   #end .endm { left: 50%; right: auto; top: 112px; transform: translateX(-50%); width: 230px; height: 230px; }
-  #end .endsay { left: 680px; right: auto; top: 150px; font-size: 26px; padding: 10px 22px; }
+  #end .endsay { left: 664px; right: auto; top: 150px; font-size: 25px; padding: 10px 20px; }
   #end .endsay::after { left: -20px; right: auto; border-left: 0; border-right: 18px solid var(--ink); }
   #end.m .kick { top: 380px; } #end.m .brand { top: 420px; } #end.m .rule { top: 640px; } #end.m .lead { top: 690px; }
   #end.m .sub { top: 795px; } #end.m .btn { top: 955px; } #end.m .at { top: 1085px; }
