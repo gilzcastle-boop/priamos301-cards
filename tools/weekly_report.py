@@ -26,8 +26,12 @@ def log_rows():
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
         if len(cells) < 8 or not re.match(r"\d{4}-\d{2}-\d{2}", cells[0]):
             continue
+        hook = cells[8] if len(cells) > 8 else "-"
+        # Mascot A/B test (2026-11-09~): the last cell may end with "/ 마스코트O" or "/ 마스코트X".
+        mascot = re.search(r"마스코트([OX])", hook)
+        hook = re.sub(r"\s*/\s*마스코트[OX]\s*$", "", hook)
         meta = {"date": cells[0], "no": cells[1], "slot": cells[2], "cat": cells[3], "title": cells[4],
-                "hook": cells[8] if len(cells) > 8 else "-"}
+                "hook": hook, "mascot": f"마스코트{mascot.group(1)}" if mascot else "-"}
         for cell in cells[6:8]:
             for url in re.findall(r"https://www\.instagram\.com/(?:p|reel)/[\w-]+/", cell):
                 rows[url] = meta
@@ -63,6 +67,7 @@ def main():
             continue
         m = meta.get(r["permalink"], {})
         posts.append({**r, "t": t.astimezone(KST), "cat": m.get("cat", "?"), "hook": m.get("hook", "-"),
+                      "mascot": m.get("mascot", "-"),
                       "watch": (r.get("ig_reels_avg_watch_time") or 0) / 1000})
     reels = [p for p in posts if p.get("media_product_type") == "REELS"]
     others = [p for p in posts if p.get("media_product_type") != "REELS"]
@@ -83,6 +88,10 @@ def main():
     table("분류별", by(lambda r: r["cat"]))
     table("게시 시각별", by(lambda r: f"{r['t'].hour:02d}시"))
     table("훅·배경음별", by(lambda r: r["hook"]))
+    if any(r["mascot"] != "-" for r in reels):
+        table("마스코트 시험별", by(lambda r: r["mascot"]))
+        # Same comparison inside each category, so one viral topic cannot decide the test alone.
+        table("마스코트 시험별(분류 안에서)", by(lambda r: f"{r['cat']} / {r['mascot']}" if r["mascot"] != "-" else "-"))
 
 
 if __name__ == "__main__":

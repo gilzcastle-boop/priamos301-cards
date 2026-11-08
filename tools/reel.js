@@ -5,16 +5,28 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
   const spec = JSON.parse(fs.readFileSync(specPath, 'utf8'));
   fs.mkdirSync(outDir, { recursive: true });
   const img = 'data:image/png;base64,' + fs.readFileSync(spec.image).toString('base64');
+  // Mascot "프리" (assets/mascot/*.png). Optional: spec.mascot = calm|surprised|sad|happy|curious.
+  const SAY = { calm: '이 소식 들었어?', surprised: '헉, 이게 무슨 일?', sad: '마음이 무거워요', happy: '반가운 소식!', curious: '어떻게 된 걸까?' };
+  const pose = spec.mascot && SAY[spec.mascot] ? spec.mascot : null;
+  const m64 = n => 'data:image/png;base64,' + fs.readFileSync(path.join(__dirname, '..', 'assets', 'mascot', `${n}.png`)).toString('base64');
+  spec.mascotOn = !!pose;
+  spec.mascotSay = pose ? (spec.mascotSay || SAY[pose]) : '';
+  spec.mascotEnd = '매일 5번 물어다 줄게요!';
+  const mascot = pose ? { pose: m64(pose), end: m64('happy') } : null;
   const b = await chromium.launch(); const p = await b.newPage();
   p.on('pageerror', e => console.error('pageerror', e.message));
   await p.setContent(`<!doctype html><html><head><meta charset="utf-8">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@500;700;900&family=Noto+Sans+KR:wght@700;800;900&family=Yellowtail&display=swap"></head>
 <body style="margin:0"><canvas id="c" width="1080" height="1920"></canvas></body></html>`, { waitUntil: 'networkidle' });
-  await p.evaluate(async ({ img, spec }) => {
-    const all = [spec.label, spec.stamp || '', spec.line1, spec.line2, ...spec.subs.map(s => s[2]), spec.handle, 'PRIAMOS DAILY ISSUE 0123456789. AI 연출 이미지 팔로우하고 매일 이슈 체크'].join(' ');
+  await p.evaluate(async ({ img, spec, mascot }) => {
+    const all = [spec.label, spec.stamp || '', spec.line1, spec.line2, ...spec.subs.map(s => s[2]), spec.handle, spec.mascotSay, spec.mascotEnd, 'PRIAMOS DAILY ISSUE 0123456789. AI 연출 이미지 팔로우하고 매일 이슈 체크'].join(' ');
+    if (mascot) {
+      const a = new Image(); a.src = mascot.pose; await a.decode(); window.MASCOT = a;
+      const e = new Image(); e.src = mascot.end; await e.decode(); window.MASCOT_END = e;
+    }
     await Promise.all([document.fonts.load('900 80px "Hahmlet"', all), document.fonts.load('700 40px "Hahmlet"', all), document.fonts.load('800 50px "Noto Sans KR"', all), document.fonts.load('900 50px "Noto Sans KR"', all), document.fonts.load('400 120px "Yellowtail"', 'Priamos')]);
     const im = new Image(); im.src = img; await im.decode(); window.IMG = im;
-  }, { img, spec });
+  }, { img, spec, mascot });
   await p.evaluate(spec => {
     const W = 1080, H = 1920, x = document.getElementById('c').getContext('2d');
     const V = { paper: '#F2E6CB', ink: '#2B1D14', red: '#C8352B', mustard: '#E3A72F' };
@@ -122,6 +134,43 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
         x.restore();
       });
     }
+    // Mascot badge: round paper badge with ink ring, as on the carousel cover.
+    function badge(im, cx, cy, r){
+      x.save(); x.translate(cx, cy);
+      x.fillStyle = V.ink; x.beginPath(); x.arc(0, 8, r + 4, 0, 7); x.fill();
+      x.beginPath(); x.arc(0, 0, r, 0, 7); x.fillStyle = V.paper; x.fill();
+      x.save(); x.clip(); x.drawImage(im, -r, -r, r * 2, r * 2); x.restore();
+      x.lineWidth = 7; x.strokeStyle = V.ink; x.stroke();
+      x.beginPath(); x.arc(0, 0, r - 12, 0, 7); x.lineWidth = 2; x.strokeStyle = V.red; x.stroke();
+      x.restore();
+    }
+    function bubble(text, left, cy, size, tail){
+      x.font = `900 ${size}px "Noto Sans KR"`; const w = x.measureText(text).width + size * 1.3, h = size * 1.9;
+      if(left === 'center') left = W / 2 - w / 2;
+      x.save(); x.fillStyle = V.ink; x.beginPath(); x.roundRect(left, cy - h / 2 + 6, w, h, h / 2); x.fill();
+      x.fillStyle = V.paper; x.strokeStyle = V.ink; x.lineWidth = 4; x.beginPath(); x.roundRect(left, cy - h / 2, w, h, h / 2); x.fill(); x.stroke();
+      x.fillStyle = V.ink; x.beginPath();
+      if(tail === 'left'){ x.moveTo(left + 2, cy - 12); x.lineTo(left - 20, cy); x.lineTo(left + 2, cy + 12); }
+      if(tail === 'up'){ x.moveTo(W / 2 - 14, cy - h / 2 + 2); x.lineTo(W / 2, cy - h / 2 - 20); x.lineTo(W / 2 + 14, cy - h / 2 + 2); }
+      x.fill();
+      x.textBaseline = 'middle'; x.fillText(text, left + size * .65, cy + 2); x.restore(); x.textBaseline = 'alphabetic';
+    }
+    // Pops in when the subtitles start (a new beat in the middle of the reel), stays until the end card.
+    function mascotMid(t){
+      if(!spec.mascotOn || !spec.subs.length) return;
+      const t0 = spec.subs[0][0] + .15; const u = prog(t, t0, t0 + .45); if(u <= 0 || t > spec.endAt + .6) return;
+      const sc = back(u), bob = Math.sin((t - t0) * 3.2) * 6, cx = 168, cy = 1150 + bob;
+      const fade = 1 - prog(t, spec.endAt - .2, spec.endAt + .1); if(fade <= 0) return;
+      x.save(); x.globalAlpha = fade; x.translate(cx, cy); x.scale(sc, sc); x.translate(-cx, -cy); badge(window.MASCOT, cx, cy, 96); x.restore();
+      const ub = prog(t, t0 + .35, t0 + .7), outb = 1 - prog(t, spec.subs[0][1] - .3, spec.subs[0][1]);
+      const ab = Math.min(ub, outb); if(ab > 0){ x.save(); x.globalAlpha = ab; bubble(spec.mascotSay, 296, 1150 + bob, 46, 'left'); x.restore(); }
+    }
+    function mascotEnd(t){
+      const u = prog(t, spec.endAt + .2, spec.endAt + .7); if(u <= 0) return;
+      const cx = W / 2, cy = 420, sc = back(u);
+      x.save(); x.translate(cx, cy); x.scale(sc, sc); x.translate(-cx, -cy); badge(window.MASCOT_END, cx, cy, 150); x.restore();
+      x.save(); x.globalAlpha = prog(t, spec.endAt + .35, spec.endAt + .6); bubble(spec.mascotEnd, 'center', 644, 38, 'up'); x.restore();
+    }
     function credit(t){ if(!spec.credit || t > spec.endAt) return; x.font = '500 18px "Noto Sans KR"'; x.fillStyle = 'rgba(255,245,230,.45)'; x.fillText(spec.credit, 64, H - 64); }
     function endCard(t){
       const u = ease(prog(t, spec.endAt, spec.endAt + .6)); if(u <= 0) return;
@@ -134,12 +183,13 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
       x.fillStyle = V.ink; x.fillRect(W / 2 - 230, 1010, 460, 5);
       x.font = '900 52px "Hahmlet"'; x.fillText(spec.handle, W / 2, 1110);
       x.font = '700 40px "Noto Sans KR"'; x.fillStyle = 'rgba(43,29,20,.8)'; x.fillText('팔로우하고 매일 이슈 체크', W / 2, 1190);
-      x.fillStyle = V.red; starburst(W / 2, 470, 70, 14, Math.sin(t) * .05); x.fillStyle = V.paper; x.font = '900 34px "Hahmlet"'; x.textBaseline = 'middle'; x.fillText(spec.label, W / 2, 474); x.textBaseline = 'alphabetic';
+      if(!spec.mascotOn){ x.fillStyle = V.red; starburst(W / 2, 470, 70, 14, Math.sin(t) * .05); x.fillStyle = V.paper; x.font = '900 34px "Hahmlet"'; x.textBaseline = 'middle'; x.fillText(spec.label, W / 2, 474); x.textBaseline = 'alphabetic'; }
       x.textAlign = 'left'; x.restore();
+      if(spec.mascotOn){ x.save(); x.globalAlpha = u; mascotEnd(t); x.restore(); }
     }
     window.renderFrame = t => {
       x.clearRect(0, 0, W, H);
-      drawImage(t); flash(t); header(t); label(t); stamp(t); headline(t); subtitle(t); credit(t); frame(); endCard(t);
+      drawImage(t); flash(t); header(t); label(t); stamp(t); headline(t); subtitle(t); mascotMid(t); credit(t); frame(); endCard(t);
       return document.getElementById('c').toDataURL('image/jpeg', .9);
     };
   }, spec);
