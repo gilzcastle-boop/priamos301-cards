@@ -8,7 +8,14 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 
+const path = require('path');
+
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// Mascot "프리" (original magpie, assets/mascot/*.png). Optional: spec.mascot = calm|surprised|sad|happy|curious.
+const MASCOT_SAY = { calm: '이 소식 들었어?', surprised: '헉, 이게 무슨 일?', sad: '마음이 무거워요',
+                     happy: '반가운 소식!', curious: '어떻게 된 걸까?' };
+const MASCOT_END = '매일 5번 물어다 줄게요!';
 
 (async () => {
   const [specPath, prefix] = process.argv.slice(2);
@@ -27,6 +34,9 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
   const [fx, fy] = (spec.focus || '50% 50%').split(' ');
   // Each point slide shows a different band of the same picture so the deck reads as one story.
   const strips = ['25%', '55%', '85%'];
+  const mascotPose = spec.mascot && MASCOT_SAY[spec.mascot] ? spec.mascot : null;
+  const mascotSrc = pose => 'data:image/png;base64,' +
+    fs.readFileSync(path.join(__dirname, '..', 'assets', 'mascot', `${pose}.png`)).toString('base64');
 
   const chrome = n => `
   <canvas class="grain" width="1080" height="1350"></canvas>
@@ -42,6 +52,8 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
   <div class="pic cover"><img src="${img}" style="object-position:${spec.focus || '50% 50%'}"></div>
   ${spec.label ? `<div class="badge"><svg width="172" height="172"><polygon points="${star}" fill="#C8352B"/></svg><span>${esc(spec.label)}</span></div>` : ''}
   ${spec.stamp ? `<div class="stamp">${esc(spec.stamp)}</div>` : ''}
+  ${mascotPose ? `<div class="say">${esc(spec.mascotSay || MASCOT_SAY[mascotPose])}</div>
+  <div class="mascot"><img src="${mascotSrc(mascotPose)}"></div>` : ''}
   <div class="head">${headline}</div>
   <div class="next">옆으로 넘겨 보기 →</div>
   </section>`;
@@ -54,7 +66,9 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
   <div class="pbody">${esc(body)}</div>
   </section>`).join('');
 
-  const end = `<section class="slide" id="end">${chrome(total)}
+  const end = `<section class="slide${mascotPose ? ' m' : ''}" id="end">${chrome(total)}
+  ${mascotPose ? `<div class="mascot endm"><img src="${mascotSrc('happy')}"></div>
+  <div class="say endsay">${esc(MASCOT_END)}</div>` : ''}
   <div class="kick">DAILY ISSUE CHECK</div>
   <div class="brand">${esc(brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase())}</div>
   <div class="rule"></div>
@@ -113,6 +127,20 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
               box-shadow: 0 6px 0 var(--ink); }
   #end .at { position: absolute; left: 0; right: 0; top: 1000px; text-align: center; font: 900 40px "Hahmlet", serif; }
   #end .credit, #end .logo, #end .handle { display: none; }
+  .mascot { position: absolute; right: 92px; top: 640px; width: 214px; height: 214px; border-radius: 50%; overflow: hidden;
+            background: var(--paper); border: 6px solid var(--ink); box-shadow: 0 6px 0 var(--ink); }
+  .mascot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .mascot::after { content: ""; position: absolute; inset: 8px; border-radius: 50%; border: 2px solid var(--red); }
+  .say { position: absolute; right: 322px; top: 700px; white-space: nowrap; background: var(--paper); color: var(--ink);
+         border: 4px solid var(--ink); border-radius: 40px; padding: 12px 30px; font: 900 32px "Noto Sans KR", sans-serif;
+         box-shadow: 0 5px 0 var(--ink); }
+  .say::after { content: ""; position: absolute; right: -20px; top: 50%; margin-top: -12px; border: 12px solid transparent;
+                border-left: 18px solid var(--ink); border-right: 0; }
+  #end .endm { left: 50%; right: auto; top: 112px; transform: translateX(-50%); width: 230px; height: 230px; }
+  #end .endsay { left: 680px; right: auto; top: 150px; font-size: 26px; padding: 10px 22px; }
+  #end .endsay::after { left: -20px; right: auto; border-left: 0; border-right: 18px solid var(--ink); }
+  #end.m .kick { top: 380px; } #end.m .brand { top: 420px; } #end.m .rule { top: 640px; } #end.m .lead { top: 690px; }
+  #end.m .sub { top: 795px; } #end.m .btn { top: 955px; } #end.m .at { top: 1085px; }
 </style></head><body>${cover}${points}${end}</body></html>`;
 
   const b = await chromium.launch();
