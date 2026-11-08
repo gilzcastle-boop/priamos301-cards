@@ -12,8 +12,8 @@ const path = require('path');
 
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-// Mascot: twin baby otters, assets/mascot/*.png (red tie, the cheerful one) and assets/mascot/twin/*.png
-// (teal tie, the calm one). Optional: spec.mascot = calm|surprised|sad|happy|curious. The cover shows the
+// Mascot: twin baby otters, assets/mascot/*.png (Pri: girl, red ribbon, the cheerful one) and
+// assets/mascot/twin/*.png (Amo: boy, teal tie, the calm one). Optional: spec.mascot = calm|surprised|sad|happy|curious. The cover shows the
 // lead twin, picked by pose (red: calm, happy / teal: surprised, sad, curious) unless spec.mascotLead = red|teal.
 // The follow slide shows both.
 const MASCOT_SAY = { calm: '이 소식 들었어?', surprised: '헉, 이게 무슨 일?', sad: '마음이 무거워요',

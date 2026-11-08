@@ -232,13 +232,15 @@ cp $W/caption.txt cards/$D-$NN.txt && cp $W/caption.txt reels/$D-$NN.txt
 ### 4-1. 마스코트 시험 (2026-11-09 07:37 ~ 2026-11-15 22:37, 사용자 승인 "마스코트 시험해", 2026-11-08)
 
 마스코트는 오리지널 캐릭터 **아기 수달 쌍둥이 "프리"와 "아모"**다(사용자 결정 "쌍둥이 컨셉으로 가자", 이름은 계정 이름 Priamos를 둘로 나눈 것, 2026-11-08).
-- 생김새: 카라멜색 털, 크림색 얼굴, 볼 홍조, 흰 셔츠에 넥타이(꼬마 뉴스 앵커). 얼굴이 크게 보이는 상반신 구도이고, 카드 그림과 같은 레트로 셀 애니 그림체다.
-- 둘은 넥타이 색으로만 구분한다.
-  - **프리, 빨간 넥타이(명랑한 쪽)**: `assets/mascot/*.png`, Figma 노드 90:2
-  - **아모, 청록 넥타이(차분한 쪽)**: `assets/mascot/twin/*.png`, Figma 노드 90:3
-  - 각자 표정 5개(calm, surprised, sad, happy, curious)를 고정해서 쓴다. 원본은 `assets/mascot/sheet.png`, `assets/mascot/archive/otter_tie_teal/sheet.png`.
+- 생김새: 카라멜색 털, 볼 홍조, 흰 셔츠(꼬마 뉴스 앵커), 카드 그림과 같은 레트로 셀 애니 그림체다.
+- 둘은 색과 성별로 구분한다(사용자 요청 "빨간은 여자고 파랑은 남자로 하고 여자애는 얼굴을 더 작게", "여자애는 단발로", 2026-11-08).
+  - **프리, 여자아이, 빨강(명랑한 쪽)**: 단발머리(일자 앞머리), 빨간 머리핀 리본, 흰 블라우스에 빨간 리본 타이. 얼굴을 작게 그린 허리 위 구도. `assets/mascot/*.png`, Figma 노드 92:4
+  - **아모, 남자아이, 청록(차분한 쪽)**: 크림색 얼굴, 흰 셔츠에 청록 넥타이. 얼굴이 크게 보이는 상반신 구도. `assets/mascot/twin/*.png`, Figma 노드 90:3
+  - 각자 표정 5개(calm, surprised, sad, happy, curious)를 고정해서 쓴다. 원본은 `assets/mascot/sheet.png`(프롬프트 `assets/mascot/sheet_prompt.txt`), `assets/mascot/archive/otter_tie_teal/sheet.png`.
 - **회차마다 새로 그리지 않는다.** 새로 그리면 생김새가 바뀌어 "그 계정" 기억이 안 생긴다.
 - 예비 그림도 보관해 둔다(`assets/mascot/archive/`).
+  - 성별 정하기 전 빨간 넥타이 프리: 노드 90:2, `archive/otter_tie_red/`
+  - 여자아이 다른 안: 단발·머리핀 없음 92:5, 긴 머리·리본 타이 92:3, 넥타이 92:2 (`archive/girl_*/sheet.png`)
   - 빨간 스카프 수달: 노드 89:3
   - 청록 스카프 수달: 노드 89:2
   - 처음 만든 까치 "프리": 노드 86:2
