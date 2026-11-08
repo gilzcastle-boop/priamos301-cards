@@ -19,7 +19,7 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
 const MASCOT_SAY = { calm: '이 소식 들었어?', surprised: '헉, 이게 무슨 일?', sad: '마음이 무거워요',
                      happy: '반가운 소식!', curious: '어떻게 된 걸까?' };
 const MASCOT_LEAD = { calm: 'red', happy: 'red', surprised: 'teal', sad: 'teal', curious: 'teal' };
-const MASCOT_END = '매일 5번, 둘이서 전해 줄게요!';
+const MASCOT_END = '프리·아모가 매일 5번 전해요!';
 
 (async () => {
   const [specPath, prefix] = process.argv.slice(2);

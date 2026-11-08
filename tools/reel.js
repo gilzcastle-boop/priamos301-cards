@@ -18,7 +18,7 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
   spec.mascotOn = !!pose;
   spec.mascotSay = pose ? (spec.mascotSay || SAY[pose]) : '';
   spec.mascotSay2 = pose ? (spec.mascotSay2 || SAY2[pose]) : '';
-  spec.mascotEnd = '매일 5번, 둘이서 전해 줄게요!';
+  spec.mascotEnd = '프리·아모가 매일 5번 전해요!';
   const lead = pose ? (spec.mascotLead || LEAD[pose]) : null, other = lead === 'teal' ? 'red' : 'teal';
   const mascot = pose ? { pose: m64(pose, lead), pose2: m64(POSE2[pose], other), endR: m64('happy', 'red'), endT: m64('happy', 'teal') } : null;
   const b = await chromium.launch(); const p = await b.newPage();
