@@ -5,24 +5,33 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
   const spec = JSON.parse(fs.readFileSync(specPath, 'utf8'));
   fs.mkdirSync(outDir, { recursive: true });
   const img = 'data:image/png;base64,' + fs.readFileSync(spec.image).toString('base64');
-  // Mascot "프리" (assets/mascot/*.png). Optional: spec.mascot = calm|surprised|sad|happy|curious.
+  // Mascot: twin baby otters, assets/mascot/*.png (red tie, cheerful) and assets/mascot/twin/*.png (teal tie, calm).
+  // Optional: spec.mascot = calm|surprised|sad|happy|curious. The lead twin (by pose, or spec.mascotLead) reacts on
+  // the first subtitle, the other twin answers on the second, and both close the reel on the end card.
   const SAY = { calm: '이 소식 들었어?', surprised: '헉, 이게 무슨 일?', sad: '마음이 무거워요', happy: '반가운 소식!', curious: '어떻게 된 걸까?' };
+  const SAY2 = { calm: '같이 자세히 보자!', surprised: '끝까지 같이 보자!', sad: '함께 기억할게요', happy: '나도 기뻐!', curious: '단서를 찾아보자!' };
+  const POSE2 = { calm: 'calm', surprised: 'curious', sad: 'sad', happy: 'happy', curious: 'curious' };
+  const LEAD = { calm: 'red', happy: 'red', surprised: 'teal', sad: 'teal', curious: 'teal' };
   const pose = spec.mascot && SAY[spec.mascot] ? spec.mascot : null;
-  const m64 = n => 'data:image/png;base64,' + fs.readFileSync(path.join(spec.mascotDir || path.join(__dirname, '..', 'assets', 'mascot'), `${n}.png`)).toString('base64');
+  const base = spec.mascotDir || path.join(__dirname, '..', 'assets', 'mascot');
+  const m64 = (n, who = 'red') => 'data:image/png;base64,' + fs.readFileSync(path.join(who === 'teal' ? path.join(base, 'twin') : base, `${n}.png`)).toString('base64');
   spec.mascotOn = !!pose;
   spec.mascotSay = pose ? (spec.mascotSay || SAY[pose]) : '';
-  spec.mascotEnd = '매일 5번 소식 전해 줄게요!';
-  const mascot = pose ? { pose: m64(pose), end: m64('happy') } : null;
+  spec.mascotSay2 = pose ? (spec.mascotSay2 || SAY2[pose]) : '';
+  spec.mascotEnd = '매일 5번, 둘이서 전해 줄게요!';
+  const lead = pose ? (spec.mascotLead || LEAD[pose]) : null, other = lead === 'teal' ? 'red' : 'teal';
+  const mascot = pose ? { pose: m64(pose, lead), pose2: m64(POSE2[pose], other), endR: m64('happy', 'red'), endT: m64('happy', 'teal') } : null;
   const b = await chromium.launch(); const p = await b.newPage();
   p.on('pageerror', e => console.error('pageerror', e.message));
   await p.setContent(`<!doctype html><html><head><meta charset="utf-8">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@500;700;900&family=Noto+Sans+KR:wght@700;800;900&family=Yellowtail&display=swap"></head>
 <body style="margin:0"><canvas id="c" width="1080" height="1920"></canvas></body></html>`, { waitUntil: 'networkidle' });
   await p.evaluate(async ({ img, spec, mascot }) => {
-    const all = [spec.label, spec.stamp || '', spec.line1, spec.line2, ...spec.subs.map(s => s[2]), spec.handle, spec.mascotSay, spec.mascotEnd, 'PRIAMOS DAILY ISSUE 0123456789. AI 연출 이미지 팔로우하고 매일 이슈 체크'].join(' ');
+    const all = [spec.label, spec.stamp || '', spec.line1, spec.line2, ...spec.subs.map(s => s[2]), spec.handle, spec.mascotSay, spec.mascotSay2, spec.mascotEnd, 'PRIAMOS DAILY ISSUE 0123456789. AI 연출 이미지 팔로우하고 매일 이슈 체크'].join(' ');
     if (mascot) {
-      const a = new Image(); a.src = mascot.pose; await a.decode(); window.MASCOT = a;
-      const e = new Image(); e.src = mascot.end; await e.decode(); window.MASCOT_END = e;
+      const load = async s => { const i = new Image(); i.src = s; await i.decode(); return i; };
+      window.MASCOT = await load(mascot.pose); window.MASCOT2 = await load(mascot.pose2);
+      window.END_R = await load(mascot.endR); window.END_T = await load(mascot.endT);
     }
     await Promise.all([document.fonts.load('900 80px "Hahmlet"', all), document.fonts.load('700 40px "Hahmlet"', all), document.fonts.load('800 50px "Noto Sans KR"', all), document.fonts.load('900 50px "Noto Sans KR"', all), document.fonts.load('400 120px "Yellowtail"', 'Priamos')]);
     const im = new Image(); im.src = img; await im.decode(); window.IMG = im;
@@ -164,11 +173,20 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
       x.save(); x.globalAlpha = fade; x.translate(cx, cy); x.scale(sc, sc); x.translate(-cx, -cy); badge(window.MASCOT, cx, cy, 96); x.restore();
       const ub = prog(t, t0 + .35, t0 + .7), outb = 1 - prog(t, spec.subs[0][1] - .3, spec.subs[0][1]);
       const ab = Math.min(ub, outb); if(ab > 0){ x.save(); x.globalAlpha = ab; bubble(spec.mascotSay, 296, 1150 + bob, 46, 'left'); x.restore(); }
+      // The other twin pops in beside it on the second subtitle and answers.
+      if(spec.subs.length < 2) return;
+      const t1 = spec.subs[1][0] + .15, u2 = prog(t, t1, t1 + .45); if(u2 <= 0) return;
+      const bob2 = Math.sin((t - t1) * 3.2 + 1.6) * 6, cx2 = 330, cy2 = 1150 + bob2;
+      x.save(); x.globalAlpha = fade; x.translate(cx2, cy2); x.scale(back(u2), back(u2)); x.translate(-cx2, -cy2); badge(window.MASCOT2, cx2, cy2, 96); x.restore();
+      const ab2 = Math.min(prog(t, t1 + .35, t1 + .7), 1 - prog(t, spec.subs[1][1] - .3, spec.subs[1][1]));
+      if(ab2 > 0){ x.save(); x.globalAlpha = ab2; bubble(spec.mascotSay2, 458, 1150 + bob2, 46, 'left'); x.restore(); }
     }
     function mascotEnd(t){
       const u = prog(t, spec.endAt + .2, spec.endAt + .7); if(u <= 0) return;
-      const cx = W / 2, cy = 420, sc = back(u);
-      x.save(); x.translate(cx, cy); x.scale(sc, sc); x.translate(-cx, -cy); badge(window.MASCOT_END, cx, cy, 150); x.restore();
+      const cy = 420, sc = back(u);
+      [[W / 2 - 125, window.END_R], [W / 2 + 125, window.END_T]].forEach(([cx, im]) => {
+        x.save(); x.translate(cx, cy); x.scale(sc, sc); x.translate(-cx, -cy); badge(im, cx, cy, 130); x.restore();
+      });
       x.save(); x.globalAlpha = prog(t, spec.endAt + .35, spec.endAt + .6); bubble(spec.mascotEnd, 'center', 644, 38, 'up'); x.restore();
     }
     function credit(t){ if(!spec.credit || t > spec.endAt) return; x.font = '500 18px "Noto Sans KR"'; x.fillStyle = 'rgba(255,245,230,.45)'; x.fillText(spec.credit, 64, H - 64); }

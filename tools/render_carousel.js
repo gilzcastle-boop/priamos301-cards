@@ -12,10 +12,14 @@ const path = require('path');
 
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-// Mascot "프리" (original magpie, assets/mascot/*.png). Optional: spec.mascot = calm|surprised|sad|happy|curious.
+// Mascot: twin baby otters, assets/mascot/*.png (red tie, the cheerful one) and assets/mascot/twin/*.png
+// (teal tie, the calm one). Optional: spec.mascot = calm|surprised|sad|happy|curious. The cover shows the
+// lead twin, picked by pose (red: calm, happy / teal: surprised, sad, curious) unless spec.mascotLead = red|teal.
+// The follow slide shows both.
 const MASCOT_SAY = { calm: '이 소식 들었어?', surprised: '헉, 이게 무슨 일?', sad: '마음이 무거워요',
                      happy: '반가운 소식!', curious: '어떻게 된 걸까?' };
-const MASCOT_END = '매일 5번 소식 전해 줄게요!';
+const MASCOT_LEAD = { calm: 'red', happy: 'red', surprised: 'teal', sad: 'teal', curious: 'teal' };
+const MASCOT_END = '매일 5번, 둘이서 전해 줄게요!';
 
 (async () => {
   const [specPath, prefix] = process.argv.slice(2);
@@ -35,8 +39,10 @@ const MASCOT_END = '매일 5번 소식 전해 줄게요!';
   // Each point slide shows a different band of the same picture so the deck reads as one story.
   const strips = ['25%', '55%', '85%'];
   const mascotPose = spec.mascot && MASCOT_SAY[spec.mascot] ? spec.mascot : null;
-  const mascotSrc = pose => 'data:image/png;base64,' +
-    fs.readFileSync(path.join(spec.mascotDir || path.join(__dirname, '..', 'assets', 'mascot'), `${pose}.png`)).toString('base64');
+  const mascotBase = spec.mascotDir || path.join(__dirname, '..', 'assets', 'mascot');
+  const mascotSrc = (pose, who = 'red') => 'data:image/png;base64,' +
+    fs.readFileSync(path.join(who === 'teal' ? path.join(mascotBase, 'twin') : mascotBase, `${pose}.png`)).toString('base64');
+  const mascotLead = mascotPose ? (spec.mascotLead || MASCOT_LEAD[mascotPose]) : null;
 
   const chrome = n => `
   <canvas class="grain" width="1080" height="1350"></canvas>
@@ -53,7 +59,7 @@ const MASCOT_END = '매일 5번 소식 전해 줄게요!';
   ${spec.label ? `<div class="badge"><svg width="172" height="172"><polygon points="${star}" fill="#C8352B"/></svg><span>${esc(spec.label)}</span></div>` : ''}
   ${spec.stamp ? `<div class="stamp">${esc(spec.stamp)}</div>` : ''}
   ${mascotPose ? `<div class="say">${esc(spec.mascotSay || MASCOT_SAY[mascotPose])}</div>
-  <div class="mascot"><img src="${mascotSrc(mascotPose)}"></div>` : ''}
+  <div class="mascot"><img src="${mascotSrc(mascotPose, mascotLead)}"></div>` : ''}
   <div class="head">${headline}</div>
   <div class="next">옆으로 넘겨 보기 →</div>
   </section>`;
@@ -67,7 +73,8 @@ const MASCOT_END = '매일 5번 소식 전해 줄게요!';
   </section>`).join('');
 
   const end = `<section class="slide${mascotPose ? ' m' : ''}" id="end">${chrome(total)}
-  ${mascotPose ? `<div class="mascot endm"><img src="${mascotSrc('happy')}"></div>
+  ${mascotPose ? `<div class="mascot endm endm1"><img src="${mascotSrc('happy', 'red')}"></div>
+  <div class="mascot endm endm2"><img src="${mascotSrc('happy', 'teal')}"></div>
   <div class="say endsay">${esc(MASCOT_END)}</div>` : ''}
   <div class="kick">DAILY ISSUE CHECK</div>
   <div class="brand">${esc(brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase())}</div>
@@ -137,7 +144,9 @@ const MASCOT_END = '매일 5번 소식 전해 줄게요!';
   .say::after { content: ""; position: absolute; right: -20px; top: 50%; margin-top: -12px; border: 12px solid transparent;
                 border-left: 18px solid var(--ink); border-right: 0; }
   #end .endm { left: 50%; right: auto; top: 112px; transform: translateX(-50%); width: 230px; height: 230px; }
-  #end .endsay { left: 664px; right: auto; top: 150px; font-size: 25px; padding: 10px 20px; }
+  #end .endm1, #end .endm2 { transform: none; width: 200px; height: 200px; top: 122px; }
+  #end .endm1 { left: 142px; } #end .endm2 { left: 302px; }
+  #end .endsay { left: 522px; right: auto; top: 186px; font-size: 25px; padding: 10px 20px; }
   #end .endsay::after { left: -20px; right: auto; border-left: 0; border-right: 18px solid var(--ink); }
   #end.m .kick { top: 380px; } #end.m .brand { top: 420px; } #end.m .rule { top: 640px; } #end.m .lead { top: 690px; }
   #end.m .sub { top: 795px; } #end.m .btn { top: 955px; } #end.m .at { top: 1085px; }
