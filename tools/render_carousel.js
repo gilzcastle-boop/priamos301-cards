@@ -12,7 +12,7 @@ const path = require('path');
 
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-// Mascot: twin baby otters, assets/mascot/*.png (Pri: girl, red ribbon, the cheerful one) and
+// Mascot: twin baby otters, assets/mascot/*.png (Pri: girl, red tie, the cheerful one) and
 // assets/mascot/twin/*.png (Amo: boy, teal tie, the calm one). Optional: spec.mascot = calm|surprised|sad|happy|curious. The cover shows the
 // lead twin, picked by pose (red: calm, happy / teal: surprised, sad, curious) unless spec.mascotLead = red|teal.
 // The follow slide shows both.

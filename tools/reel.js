@@ -5,7 +5,7 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
   const spec = JSON.parse(fs.readFileSync(specPath, 'utf8'));
   fs.mkdirSync(outDir, { recursive: true });
   const img = 'data:image/png;base64,' + fs.readFileSync(spec.image).toString('base64');
-  // Mascot: twin baby otters, assets/mascot/*.png (Pri: girl, red ribbon, cheerful) and assets/mascot/twin/*.png (Amo: boy, teal tie, calm).
+  // Mascot: twin baby otters, assets/mascot/*.png (Pri: girl, red tie, cheerful) and assets/mascot/twin/*.png (Amo: boy, teal tie, calm).
   // Optional: spec.mascot = calm|surprised|sad|happy|curious. The lead twin (by pose, or spec.mascotLead) reacts on
   // the first subtitle, the other twin answers on the second, and both close the reel on the end card.
   const SAY = { calm: '이 소식 들었어?', surprised: '헉, 이게 무슨 일?', sad: '마음이 무거워요', happy: '반가운 소식!', curious: '어떻게 된 걸까?' };
