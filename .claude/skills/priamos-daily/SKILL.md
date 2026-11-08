@@ -232,12 +232,14 @@ cp $W/caption.txt cards/$D-$NN.txt && cp $W/caption.txt reels/$D-$NN.txt
 ### 4-1. 마스코트 시험 (2026-11-09 07:37 ~ 2026-11-15 22:37, 사용자 승인 "마스코트 시험해", 2026-11-08)
 
 마스코트는 오리지널 캐릭터 **아기 수달**이다(이름 미정, 사용자 선택 2026-11-08).
-- 생김새: 카라멜색 털, 크림색 얼굴, 볼 홍조, 빨간 스카프. 얼굴이 크게 보이는 상반신 구도이고, 카드 그림과 같은 레트로 셀 애니 그림체다.
+- 생김새: 카라멜색 털, 크림색 얼굴, 볼 홍조, **흰 셔츠에 빨간 넥타이**(꼬마 뉴스 앵커). 얼굴이 크게 보이는 상반신 구도이고, 카드 그림과 같은 레트로 셀 애니 그림체다(사용자 요청 "스카프 말고 셔츠랑 넥타이", 2026-11-08).
 - 그림은 `assets/mascot/` 에 표정 5개로 고정돼 있다(calm, surprised, sad, happy, curious).
-  - 2026-11-08 Figma 노드 89:3 에서 한 장에 같이 그려 생김새를 맞췄다. 원본은 `assets/mascot/sheet.png`.
+  - 2026-11-08 Figma 노드 90:2 에서 한 장에 같이 그려 생김새를 맞췄다. 원본은 `assets/mascot/sheet.png`.
   - **회차마다 새로 그리지 않는다.** 새로 그리면 생김새가 바뀌어 "그 계정" 기억이 안 생긴다.
 - 예비 그림도 보관해 둔다. 쓰려면 파일을 `assets/mascot/` 로 바꿔 넣는다.
-  - 청록 스카프 수달: 노드 89:2, `assets/mascot/archive/otter_teal/`
+  - 청록 넥타이 수달: 노드 90:3, `assets/mascot/archive/otter_tie_teal/`
+  - 빨간 스카프 수달: 노드 89:3, `assets/mascot/archive/otter_scarf_red/`
+  - 청록 스카프 수달: 노드 89:2, `assets/mascot/archive/otter_scarf_teal/`
   - 처음 만든 까치 "프리": 노드 86:2, `assets/mascot/archive/magpie/`
 - 켜면 다음 세 곳에 나온다.
   - 캐러셀 표지 오른쪽 아래: 둥근 배지 + 말풍선
