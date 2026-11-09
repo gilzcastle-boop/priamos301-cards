@@ -43,6 +43,8 @@ const MASCOT_END = '프리·아모가 매일 5번 전해요!';
   const mascotSrc = (pose, who = 'red') => 'data:image/png;base64,' +
     fs.readFileSync(path.join(who === 'teal' ? path.join(mascotBase, 'twin') : mascotBase, `${pose}.png`)).toString('base64');
   const mascotLead = mascotPose ? (spec.mascotLead || MASCOT_LEAD[mascotPose]) : null;
+  // The twins laugh on the follow slide only after good news; any other story ends on their calm smile.
+  const mascotEndPose = mascotPose === 'happy' ? 'happy' : 'calm';
 
   const chrome = n => `
   <canvas class="grain" width="1080" height="1350"></canvas>
@@ -73,8 +75,8 @@ const MASCOT_END = '프리·아모가 매일 5번 전해요!';
   </section>`).join('');
 
   const end = `<section class="slide${mascotPose ? ' m' : ''}" id="end">${chrome(total)}
-  ${mascotPose ? `<div class="mascot endm endm1"><img src="${mascotSrc('happy', 'red')}"></div>
-  <div class="mascot endm endm2"><img src="${mascotSrc('happy', 'teal')}"></div>
+  ${mascotPose ? `<div class="mascot endm endm1"><img src="${mascotSrc(mascotEndPose, 'red')}"></div>
+  <div class="mascot endm endm2"><img src="${mascotSrc(mascotEndPose, 'teal')}"></div>
   <div class="say endsay">${esc(MASCOT_END)}</div>` : ''}
   <div class="kick">DAILY ISSUE CHECK</div>
   <div class="brand">${esc(brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase())}</div>

@@ -20,7 +20,9 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
   spec.mascotSay2 = pose ? (spec.mascotSay2 || SAY2[pose]) : '';
   spec.mascotEnd = '프리·아모가 매일 5번 전해요!';
   const lead = pose ? (spec.mascotLead || LEAD[pose]) : null, other = lead === 'teal' ? 'red' : 'teal';
-  const mascot = pose ? { pose: m64(pose, lead), pose2: m64(POSE2[pose], other), endR: m64('happy', 'red'), endT: m64('happy', 'teal') } : null;
+  // The twins laugh on the end card only after good news; any other story ends on their calm smile.
+  const endPose = pose === 'happy' ? 'happy' : 'calm';
+  const mascot = pose ? { pose: m64(pose, lead), pose2: m64(POSE2[pose], other), endR: m64(endPose, 'red'), endT: m64(endPose, 'teal') } : null;
   const b = await chromium.launch(); const p = await b.newPage();
   p.on('pageerror', e => console.error('pageerror', e.message));
   await p.setContent(`<!doctype html><html><head><meta charset="utf-8">
