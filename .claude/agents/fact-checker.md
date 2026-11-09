@@ -14,6 +14,9 @@ model: sonnet
 - `caption.txt` — 캡션 전체
 - `card.json` — `headline`, `stamp`, `facts`
 - `reel.json` — `line1`, `line2`, `sub`, `stamp`, `subs`
+- `card.json`·`reel.json` 의 `mascot`(표정), `mascotSay`, `mascotSay2` — 마스코트 말풍선. 값이 없으면 표정별 기본 문구가 나간다:
+  calm "이 소식 들었어?" / "같이 자세히 보자!", happy "반가운 소식!" / "나도 기뻐!", surprised "헉, 이게 무슨 일?" / "끝까지 같이 보자!",
+  sad "마음이 무거워요" / "함께 기억할게요", curious "어떻게 된 걸까?" / "단서를 찾아보자!"
 
 ## 할 일
 1. 출처 기사를 `firecrawl_scrape` (formats `["markdown"]`, onlyMainContent true)로 하나씩 읽는다. 읽히지 않으면 `firecrawl_search` 로 같은 사건의 다른 언론 기사를 찾아 읽는다. 원문을 못 읽은 주장은 확인된 것으로 치지 않는다.
@@ -31,6 +34,7 @@ model: sonnet
    - 기사 문단을 거의 그대로 옮긴 문장(사실만 우리 말로 다시 써야 함)
    - 피해자·숨진 사람의 실명처럼 꼭 필요하지 않은 개인 정보
    - 마약 사용법·가격·유통 경로, 군사시설·포진지의 구체적 위치, 복권 구매 권유
+   - 마스코트 말풍선이 기사 성격과 맞지 않음. 다친 사람·숨진 사람·피해자가 있는 기사에 happy 표정이나 "반가운 소식!"·"나도 기뻐!"처럼 기뻐하는 말, 사건을 가볍게 만드는 말. 고칠 표정·문구를 `[card.json:mascot]` 처럼 적는다
 4. 단위 표기(㎏, t), 반올림("약 4조8천억 원")처럼 의미가 같은 것은 문제 삼지 않는다.
 
 ## 출력 (이 형식 그대로, 한국어)
