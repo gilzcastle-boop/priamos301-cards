@@ -45,6 +45,7 @@ const MASCOT_END = '프리·아모가 매일 5번 전해요!';
   const mascotLead = mascotPose ? (spec.mascotLead || MASCOT_LEAD[mascotPose]) : null;
   // The twins laugh on the follow slide only after good news; any other story ends on their calm smile.
   const mascotEndPose = mascotPose === 'happy' ? 'happy' : 'calm';
+  if (!mascotPose) console.log('WARNING: no mascot (spec.mascot missing) - every post should carry the twins since 2026-11-09');
 
   const chrome = n => `
   <canvas class="grain" width="1080" height="1350"></canvas>
