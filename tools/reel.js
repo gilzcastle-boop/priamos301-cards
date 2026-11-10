@@ -209,7 +209,10 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
     }
     window.renderFrame = t => {
       x.clearRect(0, 0, W, H);
-      drawImage(t); flash(t); header(t); label(t); stamp(t); headline(t); subtitle(t); mascotMid(t); credit(t); frame(); endCard(t);
+      // spec.layout 'full': full-bleed picture, no paper frame and no header band (2026-11-10 test; Instagram's help
+      // page lists reels with borders or mostly covered by text among those recommended less).
+      const full = spec.layout === 'full';
+      drawImage(t); flash(t); if(!full) header(t); label(t); stamp(t); headline(t); subtitle(t); mascotMid(t); credit(t); if(!full) frame(); endCard(t);
       return document.getElementById('c').toDataURL('image/jpeg', .9);
     };
   }, spec);

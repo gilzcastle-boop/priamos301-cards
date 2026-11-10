@@ -18,7 +18,7 @@ BASE = ["views", "reach", "likes", "comments", "saved", "shares", "total_interac
 
 
 def insights(media):
-    metrics = BASE + (["ig_reels_avg_watch_time"] if media.get("media_product_type") == "REELS" else [])
+    metrics = BASE + (["ig_reels_avg_watch_time", "reels_skip_rate"] if media.get("media_product_type") == "REELS" else [])
     try:
         data = call("GET", f"{API}/{media['id']}/insights?metric={','.join(metrics)}")["data"]
     except SystemExit as e:  # very new posts can refuse some metrics
