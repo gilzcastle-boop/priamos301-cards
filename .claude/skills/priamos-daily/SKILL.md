@@ -58,8 +58,11 @@ W=$(mktemp -d)                                       # 작업 폴더 (저장소 
 
 **사실 확인**: 후보 기사 본문을 `firecrawl_scrape` 로 읽고, **다른 언론사 기사 1곳 이상**에서 핵심 사실(숫자, 날짜, 장소, 누가 무엇을)을 확인한다.
 **Firecrawl 크레딧이 없을 때(예비 길, 2026-11-10 사용자가 언론사 주소를 네트워크에 허용함)**: `firecrawl_*` 가 "Insufficient credits" 로 막히면 회차를 건너뛰지 말고 아래 순서로 한다.
-1. 두 번째 기사 찾기: `HANKOOKILBO_MCP` 의 `search_news`, 허용된 언론사의 RSS(`https://www.yna.co.kr/rss/news.xml`, `https://www.khan.co.kr/rss/rssdata/total_news.xml`, `https://www.newsis.com/RSS/sokbo.xml`, `https://www.hani.co.kr/rss/`)를 `curl` 로 받아 제목을 찾는다. `WebSearch` 는 당일 기사가 잘 안 나오니 보조로만 쓴다.
-2. 원문 읽기: `python3 tools/fetch_article.py <기사 주소> $W/src1.txt` (두 번째는 `src2.txt`). 2026-11-10 에 한국일보·연합뉴스·경향·뉴시스·서울신문·조선일보에서 본문이 읽히는 것을 확인했다. 뉴스1은 자동 접속을 막고(403), 동아일보는 응답이 없었다. 허용 목록에 없는 주소(하위 주소 포함, 예: `biz.chosun.com`, `mobile.newsis.com`)는 연결되지 않는다.
+1. 두 번째 기사 찾기: `HANKOOKILBO_MCP` 의 `search_news`, 허용된 언론사의 RSS(`https://www.yna.co.kr/rss/news.xml`, `https://www.khan.co.kr/rss/rssdata/total_news.xml`, `https://www.newsis.com/RSS/sokbo.xml`, `https://www.hani.co.kr/rss/`, `https://news.sbs.co.kr/news/newsflashRssFeed.do?plink=RSSREADER`)를 `curl` 로 받아 제목을 찾는다. `WebSearch` 는 당일 기사가 잘 안 나오니 보조로만 쓴다.
+2. 원문 읽기: `python3 tools/fetch_article.py <기사 주소> $W/src1.txt` (두 번째는 `src2.txt`). 이 도구는 뽑은 본문이 그 페이지의 제목·요약과 맞을 때만 저장한다(뉴스 페이지에는 다른 기사 본문도 섞여 있다). `NO BODY`·`NO MATCH`·`FETCH FAILED` 가 나오면 그 언론사는 접고 다른 곳 기사로 바꾼다. 저장된 파일은 `TITLE:` 줄과 본문 첫 줄이 같은 사건인지 한 번 본다.
+   - 2026-11-10 에 본문이 읽힌 곳(21곳): 한국일보·연합뉴스·경향·뉴시스·서울신문·조선일보·조선비즈·중앙일보·한겨레·머니투데이·뉴스핌·세계일보·아시아경제·이데일리·국민일보·SBS·MBC·YTN·스포티비뉴스·엑스포츠뉴스·정책브리핑(korea.kr).
+   - 못 읽는 곳: JTBC·KBS(본문을 스크립트로 불러온다), 뉴스1(자동 접속 차단, 403), 동아일보(응답 없음).
+   - 허용 목록에 없는 주소(하위 주소 포함, 예: `mobile.newsis.com`, `m.hani.co.kr`)는 연결되지 않는다.
 3. fact-checker 를 부를 때 프롬프트에 `Firecrawl 크레딧이 없어 원문을 $W/src1.txt, $W/src2.txt 로 받아 두었습니다. 이 파일을 Read 로 읽어 판정해 주세요.` 를 붙인다.
 4. 두 곳의 원문을 이 방법으로도 못 읽으면 그때 건너뛴다. 원문 없이 제목·발췌만으로는 게시하지 않는다.
 두 기사가 다르면 넓은 표현을 쓰거나("수십 명") 그 사실을 빼고, 그래도 안 되면 다음 후보로 간다. 후보 5개가 모두 안 되면 이번 회차는 건너뛴다.
