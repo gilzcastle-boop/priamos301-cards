@@ -3,13 +3,15 @@
  * 유튜브 인기 영상 수집기 → popular/data.json
  *
  *   YOUTUBE_API_KEY=... node tools/fetch_popular.js
- *       YouTube Data API v3 (videos.list, chart=mostPopular)로 한국·미국·일본 차트를 받아 합친다.
- *       한 번 돌 때 호출 18회(나라 3 × 차트 6), 할당량 18단위.
+ *       YouTube Data API v3로 한국·미국·일본 차트(18회, 18단위)와 재사용 허용(CC) 인기 영상
+ *       (나라별 검색 1회 100단위 + 상세 1단위, 합 303단위)을 받아 합친다. 하루 기본 할당량은 10,000단위.
+ *       키는 X-Goog-Api-Key 헤더로 보낸다.
  *
  *   node tools/fetch_popular.js --ingest a.json b.json ...
  *       PlayMCP YouTubeData 커넥터 응답({regionCode, videos, fetchedAt})을 받은 순서대로 합친다.
  *
  * 옵션: --out <파일>  --regions KR,US,JP  --keep-days 14  --fresh(이전 data.json을 무시)
+ *       --no-reusable(재사용 허용 검색을 건너뛰어 18단위만 사용)
  */
 'use strict';
 const fs = require('fs');
@@ -44,43 +46,19 @@ function save(state, source) {
   console.log(`${path.relative(process.cwd(), out)}: 영상 ${state.items.length}개, 수집 ${core.fmtStamp(state.updatedAt)} (KST)`);
 }
 
-async function fetchChart(key, region, categoryId) {
-  const url = new URL('https://www.googleapis.com/youtube/v3/videos');
-  url.search = new URLSearchParams({
-    part: 'snippet,contentDetails,statistics,status', chart: 'mostPopular',
-    regionCode: region, maxResults: '50', key
-  });
-  if (categoryId) url.searchParams.set('videoCategoryId', categoryId);
-  const res = await fetch(url);
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const reason = body.error && body.error.message ? body.error.message : `HTTP ${res.status}`;
-    throw new Error(reason);
-  }
-  return (body.items || []).map((v, i) => core.fromApi(v, region, i + 1));
-}
-
 async function collectFromApi(key) {
   const now = new Date().toISOString();
-  const sightings = [];
-  const failed = [];
-  for (const region of regions) {
-    for (const categoryId of [null, ...core.PLAN.categories]) {
-      const label = `${region}/${categoryId || '기본'}`;
-      try {
-        const rows = await fetchChart(key, region, categoryId);
-        sightings.push(...rows);
-        console.log(`${label}: ${rows.length}개`);
-      } catch (e) {
-        failed.push(label);
-        console.warn(`${label}: 건너뜀 — ${e.message}`);
-      }
-    }
+  const result = await core.collectFromApi({ fetch, key, regions, reusable: !args.includes('--no-reusable') });
+  if (!result.sightings.length) {
+    throw new Error(result.lastError ? result.lastError.message : '받은 영상이 없습니다.');
   }
-  if (!sightings.length) throw new Error('받은 영상이 없습니다. API 키와 할당량을 확인하세요.');
-  const state = core.merge(loadState(), sightings, now);
-  save(state, 'YouTube Data API v3 videos.list chart=mostPopular');
-  if (failed.length) console.warn(`받지 못한 차트: ${failed.join(', ')}`);
+  const state = core.merge(loadState(), result.sightings, now);
+  save(state, 'YouTube Data API v3 (videos.list mostPopular, search.list videoLicense=creativeCommon)');
+  const cc = state.items.filter((it) => it.license === 'creativeCommon').length;
+  console.log(`재사용 허용 영상 ${cc}개, 사용 할당량 약 ${result.units}단위`);
+  if (result.failed.length) {
+    console.warn(`받지 못한 차트: ${result.failed.join(', ')}${result.lastError ? ' — ' + result.lastError.message : ''}`);
+  }
 }
 
 function ingest(files) {
