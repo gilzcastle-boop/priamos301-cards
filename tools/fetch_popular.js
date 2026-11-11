@@ -15,6 +15,16 @@
  *       --no-reusable(재사용 허용 검색을 건너뛴다. 검색 한도를 쓰지 않는다)
  */
 'use strict';
+
+// 프록시를 거치는 실행 환경(Claude 클라우드 세션 등)에서는 Node 내장 fetch가 프록시를 쓰도록
+// NODE_USE_ENV_PROXY=1 을 붙여 한 번 다시 실행한다. 그래야 환경에 저장된 키가 요청에 붙는다. (Node 22.21 이상)
+if ((process.env.HTTPS_PROXY || process.env.https_proxy) && !process.env.NODE_USE_ENV_PROXY) {
+  const rerun = require('child_process').spawnSync(process.execPath, process.argv.slice(1), {
+    stdio: 'inherit', env: Object.assign({}, process.env, { NODE_USE_ENV_PROXY: '1' })
+  });
+  process.exit(rerun.status == null ? 1 : rerun.status);
+}
+
 const fs = require('fs');
 const path = require('path');
 const core = require('../popular/core.js');
