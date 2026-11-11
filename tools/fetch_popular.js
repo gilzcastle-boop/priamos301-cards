@@ -4,14 +4,15 @@
  *
  *   YOUTUBE_API_KEY=... node tools/fetch_popular.js
  *       YouTube Data API v3로 한국·미국·일본 차트(18회, 18단위)와 재사용 허용(CC) 인기 영상
- *       (나라별 검색 1회 100단위 + 상세 1단위, 합 303단위)을 받아 합친다. 하루 기본 할당량은 10,000단위.
- *       키는 X-Goog-Api-Key 헤더로 보낸다.
+ *       (나라별 검색 1회 + 상세 1단위)을 받아 합친다. 키는 X-Goog-Api-Key 헤더로 보낸다.
+ *       기본 한도: 검색은 하루 100회, 그 밖의 호출은 합쳐서 하루 10,000단위.
+ *       나라 3곳이면 한 번에 검색 3회를 쓰므로 재사용 허용까지 받는 수집은 하루 33번까지 가능하다.
  *
  *   node tools/fetch_popular.js --ingest a.json b.json ...
  *       PlayMCP YouTubeData 커넥터 응답({regionCode, videos, fetchedAt})을 받은 순서대로 합친다.
  *
  * 옵션: --out <파일>  --regions KR,US,JP  --keep-days 14  --fresh(이전 data.json을 무시)
- *       --no-reusable(재사용 허용 검색을 건너뛰어 18단위만 사용)
+ *       --no-reusable(재사용 허용 검색을 건너뛴다. 검색 한도를 쓰지 않는다)
  */
 'use strict';
 const fs = require('fs');
@@ -55,7 +56,7 @@ async function collectFromApi(key) {
   const state = core.merge(loadState(), result.sightings, now);
   save(state, 'YouTube Data API v3 (videos.list mostPopular, search.list videoLicense=creativeCommon)');
   const cc = state.items.filter((it) => it.license === 'creativeCommon').length;
-  console.log(`재사용 허용 영상 ${cc}개, 사용 할당량 약 ${result.units}단위`);
+  console.log(`재사용 허용 영상 ${cc}개, 사용량: ${result.units}단위, 검색 ${result.searches}회`);
   if (result.failed.length) {
     console.warn(`받지 못한 차트: ${result.failed.join(', ')}${result.lastError ? ' — ' + result.lastError.message : ''}`);
   }

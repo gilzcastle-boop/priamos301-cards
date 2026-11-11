@@ -193,7 +193,7 @@ h1,h2,p{margin:0}
       <button type="submit" class="btn">저장하고 받기</button>
       <button type="button" class="btn quiet" id="keyClear" hidden>키 지우기</button>
     </div>
-    <p>키를 넣으면 이 브라우저가 유튜브에서 차트와 재사용 허용 영상을 직접 받습니다. 키는 이 브라우저에만 저장됩니다. 차트는 10분마다 약 18단위, 재사용 허용 영상 검색은 6시간마다 약 300단위를 씁니다(하루 기본 10,000단위).</p>
+    <p>키를 넣으면 이 브라우저가 유튜브에서 차트와 재사용 허용 영상을 직접 받습니다. 키는 이 브라우저에만 저장됩니다. 차트는 10분마다 18단위(하루 한도 10,000단위), 재사용 허용 영상 검색은 6시간마다 3회(하루 한도 100회)를 씁니다.</p>
   </form>
 
   <form class="search" role="search" id="searchForm">
@@ -663,7 +663,7 @@ h1,h2,p{margin:0}
   function explainApi(err) {
     var kind = err && err.kind;
     if (kind === 'key') return 'API 키가 올바르지 않습니다. Google Cloud 콘솔에서 키를 다시 확인해 주세요.';
-    if (kind === 'quota') return '오늘 YouTube API 할당량을 다 썼습니다. 태평양 시간 자정(한국 시간 오후 4~5시)에 다시 채워집니다.';
+    if (kind === 'quota') return '오늘 YouTube API 할당량을 다 썼습니다. 내일 다시 받아 주세요.';
     if (kind === 'disabled') return '이 키의 프로젝트에서 YouTube Data API v3가 켜져 있지 않습니다. Google Cloud 콘솔의 API 및 서비스에서 사용 설정해 주세요.';
     if (kind === 'restricted') return '이 키는 이 주소에서 쓸 수 없게 제한돼 있습니다. 키의 웹사이트 제한에 이 페이지 주소를 추가해 주세요.';
     return 'YouTube API에서 자료를 받지 못했습니다' + (err && err.message ? ': ' + err.message : '.');
