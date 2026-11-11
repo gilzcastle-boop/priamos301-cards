@@ -1,7 +1,7 @@
-# popular/ 폴더만 GitHub Pages에 올린다.
-# 저장소 전체(카드·릴스 수백 MB)를 올리면 Pages의 게시 한도 1GB에 걸리므로 이 폴더만 게시한다.
+# 도구 화면 폴더(popular/, shorts/)만 GitHub Pages에 올린다.
+# 저장소 전체(카드·릴스 수백 MB)를 올리면 Pages의 게시 한도 1GB에 걸리므로 이 폴더들만 게시한다.
 # 먼저 저장소 Settings → Pages → Source 를 "GitHub Actions"로 바꿔 두어야 한다.
-# 게시 주소: https://<계정>.github.io/<저장소>/popular/
+# 게시 주소: https://<계정>.github.io/<저장소>/popular/ , .../shorts/
 name: Publish popular page
 
 on:
@@ -9,6 +9,7 @@ on:
     branches: [main]
     paths:
       - 'popular/**'
+      - 'shorts/**'
       - '.github/workflows/popular-pages.yml'
   workflow_dispatch:
 
@@ -28,15 +29,18 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout popular/ only
+      - name: Checkout the tool folders only
         uses: actions/checkout@v4
         with:
-          sparse-checkout: popular
+          sparse-checkout: |
+            popular
+            shorts
       - name: Build site folder
         run: |
           mkdir -p _site
           cp -r popular _site/popular
-          echo '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=popular/"><a href="popular/">유튜브 실시간 인기</a>' > _site/index.html
+          cp -r shorts _site/shorts
+          echo '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>도구</title><ul><li><a href="popular/">유튜브 실시간 인기</a><li><a href="shorts/">쇼츠 공장</a></ul>' > _site/index.html
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
