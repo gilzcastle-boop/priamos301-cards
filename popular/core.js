@@ -99,8 +99,9 @@
   }
 
   // ── YouTube Data API v3로 한 번 수집 ──
-  // 차트: videos.list chart=mostPopular (호출당 1단위) × 나라 × (기본 + 카테고리 5)
-  // 재사용 허용: search.list videoLicense=creativeCommon, 최근 7일 조회수순 (호출당 100단위) × 나라
+  // 차트: videos.list chart=mostPopular (호출당 1단위, 하루 10,000단위 한도) × 나라 × (기본 + 카테고리 5)
+  // 재사용 허용: search.list videoLicense=creativeCommon, 최근 7일 조회수순 × 나라.
+  //   검색은 단위와 별개로 하루 100회 한도가 따로 있다.
   var API_BASE = 'https://www.googleapis.com/youtube/v3/';
   var VIDEO_PARTS = 'snippet,contentDetails,statistics,status';
   var LANG_OF_REGION = { KR: 'ko', JP: 'ja', US: 'en' };
@@ -127,7 +128,7 @@
   }
 
   // opts: { fetch, key, regions?, reusable?: false면 재사용 허용 검색을 건너뜀, now?, onProgress?(done, total) }
-  // → { sightings, failed: [차트 이름], fatal: 멈추게 한 오류 | null, units: 쓴 할당량 }
+  // → { sightings, failed: [차트 이름], fatal: 멈추게 한 오류 | null, units: 쓴 단위(검색 제외), searches: 검색 횟수 }
   function collectFromApi(opts) {
     var fetchFn = opts.fetch, key = opts.key;
     var regions = opts.regions || PLAN.regions;
@@ -140,7 +141,7 @@
     if (opts.reusable !== false) {
       regions.forEach(function (region) { jobs.push({ chart: false, region: region, label: region + '/재사용 허용' }); });
     }
-    var out = { sightings: [], failed: [], fatal: null, units: 0 };
+    var out = { sightings: [], failed: [], fatal: null, units: 0, searches: 0 };
     var since = new Date((opts.now || Date.now()) - 7 * DAY).toISOString();
 
     function run(job) {
@@ -152,7 +153,7 @@
           return (body.items || []).map(function (v, i) { return fromApi(v, job.region, i + 1); });
         });
       }
-      out.units += 100;
+      out.searches += 1;
       return apiGet(fetchFn, key, 'search', {
         part: 'snippet', type: 'video', videoLicense: 'creativeCommon', order: 'viewCount', publishedAfter: since,
         regionCode: job.region, relevanceLanguage: LANG_OF_REGION[job.region], maxResults: 50
