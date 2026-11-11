@@ -98,6 +98,94 @@
       .map(function (v, i) { return fromTool(v, region, i + 1); });
   }
 
+  // ── YouTube Data API v3로 한 번 수집 ──
+  // 차트: videos.list chart=mostPopular (호출당 1단위) × 나라 × (기본 + 카테고리 5)
+  // 재사용 허용: search.list videoLicense=creativeCommon, 최근 7일 조회수순 (호출당 100단위) × 나라
+  var API_BASE = 'https://www.googleapis.com/youtube/v3/';
+  var VIDEO_PARTS = 'snippet,contentDetails,statistics,status';
+  var LANG_OF_REGION = { KR: 'ko', JP: 'ja', US: 'en' };
+
+  function apiGet(fetchFn, key, path, params) {
+    var qs = Object.keys(params).filter(function (k) { return params[k] != null; })
+      .map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); }).join('&');
+    return fetchFn(API_BASE + path + '?' + qs, { headers: { 'X-Goog-Api-Key': key } }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (body) {
+        if (res.ok) return body;
+        var e = body.error || {};
+        var reason = (e.errors && e.errors[0] && e.errors[0].reason) || '';
+        var msg = e.message || ('HTTP ' + res.status);
+        var err = new Error(msg);
+        err.status = res.status;
+        // 남은 호출도 같은 이유로 실패하는 오류는 kind를 붙여 수집을 멈춘다.
+        if (/API key not valid|API key expired|unregistered callers/i.test(msg)) err.kind = 'key';
+        else if (/quota|rateLimitExceeded|dailyLimitExceeded/i.test(reason + ' ' + msg)) err.kind = 'quota';
+        else if (reason === 'accessNotConfigured' || /has not been used in project|is disabled/i.test(msg)) err.kind = 'disabled';
+        else if (reason === 'ipRefererBlocked' || /referer|referrer|IP address/i.test(msg)) err.kind = 'restricted';
+        throw err;
+      });
+    });
+  }
+
+  // opts: { fetch, key, regions?, reusable?: false면 재사용 허용 검색을 건너뜀, now?, onProgress?(done, total) }
+  // → { sightings, failed: [차트 이름], fatal: 멈추게 한 오류 | null, units: 쓴 할당량 }
+  function collectFromApi(opts) {
+    var fetchFn = opts.fetch, key = opts.key;
+    var regions = opts.regions || PLAN.regions;
+    var jobs = [];
+    regions.forEach(function (region) {
+      [null].concat(PLAN.categories).forEach(function (cat) {
+        jobs.push({ chart: true, region: region, cat: cat, label: region + '/' + (cat || '기본') });
+      });
+    });
+    if (opts.reusable !== false) {
+      regions.forEach(function (region) { jobs.push({ chart: false, region: region, label: region + '/재사용 허용' }); });
+    }
+    var out = { sightings: [], failed: [], fatal: null, units: 0 };
+    var since = new Date((opts.now || Date.now()) - 7 * DAY).toISOString();
+
+    function run(job) {
+      if (job.chart) {
+        out.units += 1;
+        return apiGet(fetchFn, key, 'videos', {
+          part: VIDEO_PARTS, chart: 'mostPopular', regionCode: job.region, videoCategoryId: job.cat, maxResults: 50
+        }).then(function (body) {
+          return (body.items || []).map(function (v, i) { return fromApi(v, job.region, i + 1); });
+        });
+      }
+      out.units += 100;
+      return apiGet(fetchFn, key, 'search', {
+        part: 'snippet', type: 'video', videoLicense: 'creativeCommon', order: 'viewCount', publishedAfter: since,
+        regionCode: job.region, relevanceLanguage: LANG_OF_REGION[job.region], maxResults: 50
+      }).then(function (body) {
+        var ids = (body.items || []).map(function (x) { return x.id && x.id.videoId; }).filter(Boolean);
+        if (!ids.length) return [];
+        out.units += 1;
+        return apiGet(fetchFn, key, 'videos', { part: VIDEO_PARTS, id: ids.join(',') }).then(function (detail) {
+          return (detail.items || [])
+            .filter(function (v) { return v.status && v.status.license === 'creativeCommon'; })
+            .map(function (v, i) { var s = fromApi(v, job.region, i + 1); s.source = 'search'; return s; });
+        });
+      });
+    }
+
+    var i = 0;
+    function next() {
+      if (i >= jobs.length) return out;
+      var job = jobs[i++];
+      return run(job).then(function (rows) {
+        out.sightings = out.sightings.concat(rows);
+      }, function (err) {
+        out.failed.push(job.label);
+        out.lastError = err;
+        if (err.kind) { out.fatal = err; i = jobs.length; }
+      }).then(function () {
+        if (opts.onProgress) opts.onProgress(i, jobs.length);
+        return next();
+      });
+    }
+    return Promise.resolve().then(next);
+  }
+
   function union(a, b) {
     var out = (a || []).slice();
     (b || []).forEach(function (x) { if (out.indexOf(x) < 0) out.push(x); });
@@ -118,7 +206,9 @@
         b = batch[s.videoId] = {};
         for (var k in s) b[k] = s[k];
         b.regions = [];
+        b.chart = s.source !== 'search';
       } else {
+        if (s.source !== 'search') b.chart = true;
         if (s.rank < b.rank) b.rank = s.rank;
         if (!b.license && s.license) b.license = s.license;
         if (!b.langHint && s.langHint) b.langHint = s.langHint;
@@ -142,7 +232,7 @@
         categoryId: b.categoryId, category: categoryOf(b.categoryId),
         license: b.license || (old && old.license) || null,
         langHint: b.langHint || (old && old.langHint) || null,
-        regions: regions, rank: b.rank,
+        regions: regions, rank: b.rank, onChart: b.chart,
         firstSeenAt: old ? old.firstSeenAt : nowISO, lastSeenAt: nowISO,
         prevViewCount: old ? old.prevViewCount : null, prevSeenAt: old ? old.prevSeenAt : null
       };
@@ -185,6 +275,7 @@
   function kstDay(ms) { return new Date(ms + KST).toISOString().slice(0, 10); }
 
   // 조건에 맞는 영상을 골라 순위대로 돌려준다.
+  // 차트 목록에는 차트에 오른 영상만, '재사용 허용만'에는 CC 라이선스 영상(차트 + 검색 수집분)만 나온다.
   // f: { sort: 'trending'|'views', period: 'all'|'today'|'week', category, lang, longOnly, reusableOnly, q,
   //      keepStale: 하루 넘게 차트에 없던 영상도 급상승 목록에 남긴다(저장한 영상 보기용) }
   function select(state, f, nowMs) {
@@ -200,10 +291,11 @@
       if (f.category && f.category !== 'all' && it.category !== f.category) return;
       if (f.lang && f.lang !== 'all' && it.lang !== f.lang) return;
       if (f.longOnly && !(it.durationSeconds > LONG_FORM_SECONDS)) return;
-      if (f.reusableOnly && it.license !== 'creativeCommon') return;
+      if (f.reusableOnly ? it.license !== 'creativeCommon' : it.onChart === false) return;
       if (q && (it.title + '\n' + it.channelName).toLowerCase().indexOf(q) < 0) return;
       var v = velocity(it);
-      out.push({ item: it, perHour: v.perHour, basis: v.basis, current: updated - last <= CURRENT_WINDOW_MS });
+      out.push({ item: it, perHour: v.perHour, basis: v.basis, onChart: it.onChart !== false,
+        current: updated - last <= CURRENT_WINDOW_MS });
     });
     out.sort(f.sort === 'views'
       ? function (a, b) { return (b.item.viewCount || 0) - (a.item.viewCount || 0); }
@@ -252,7 +344,7 @@
     LONG_FORM_SECONDS: LONG_FORM_SECONDS, CURRENT_WINDOW_MS: CURRENT_WINDOW_MS,
     categoryOf: categoryOf, parseDuration: parseDuration, detectLang: detectLang,
     fromApi: fromApi, fromTool: fromTool, sightingsFromTool: sightingsFromTool,
-    merge: merge, prune: prune, velocity: velocity, select: select, hasLicenseData: hasLicenseData,
+    collectFromApi: collectFromApi, merge: merge, prune: prune, velocity: velocity, select: select, hasLicenseData: hasLicenseData,
     fmtCount: fmtCount, fmtDuration: fmtDuration, fmtAge: fmtAge, fmtStamp: fmtStamp
   };
 });
