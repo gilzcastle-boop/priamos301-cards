@@ -46,19 +46,23 @@
     return (+m[1] || 0) * 86400 + (+m[2] || 0) * 3600 + (+m[3] || 0) * 60 + (+m[4] || 0);
   }
 
-  // 언어: API가 알려 주면 그 값, 없으면 제목·채널명의 글자로 판단한다.
-  // 로마자뿐인 제목은 영어로 보되, 한 나라 음악 차트에만 오른 곡은 그 나라 말로 추정한다(영어 제목 K팝 등).
+  // 언어: 제목·채널명에 가나나 한글이 있으면 그 글자를 따른다. 글자로 알 수 없을 때만 유튜브에 등록된 값을
+  // 쓰는데, 올린 사람이 잘못 넣는 경우가 있어 한국어·일본어 등록값은 그 나라 차트에 오른 영상일 때만 믿는다.
+  // 남는 로마자 제목은 영어로 보되, 한 나라 음악 차트에만 오른 곡은 그 나라 말로 추정한다(영어 제목 K팝 등).
   function detectLang(title, channel, regions, hint, category) {
-    if (hint) {
-      var h = String(hint).toLowerCase().slice(0, 2);
-      return h === 'ko' || h === 'ja' || h === 'en' ? h : 'other';
-    }
     var text = (title || '') + ' ' + (channel || '');
     var r = regions || [];
-    if (/[぀-ヿ]/.test(text)) return 'ja';
-    if (/[가-힯㄰-㆏]/.test(text)) return 'ko';
-    if (/[一-鿿]/.test(text)) return r.indexOf('JP') >= 0 ? 'ja' : 'other';
-    if (/[Ѐ-ӿ؀-ۿऀ-ॿ฀-๿]/.test(text)) return 'other';
+    if (/[\u3040-\u30ff]/.test(text)) return 'ja';
+    if (/[\uac00-\ud7af\u3130-\u318f]/.test(text)) return 'ko';
+    if (hint) {
+      var h = String(hint).toLowerCase().slice(0, 2);
+      var home = h === 'ko' ? 'KR' : h === 'ja' ? 'JP' : null;
+      if (h === 'en') return 'en';
+      if (!home) return 'other';
+      if (r.indexOf(home) >= 0) return h;
+    }
+    if (/[\u4e00-\u9fff]/.test(text)) return r.indexOf('JP') >= 0 ? 'ja' : 'other';
+    if (/[\u0400-\u04ff\u0600-\u06ff\u0900-\u097f\u0e00-\u0e7f]/.test(text)) return 'other';
     if (category === 'music' && r.length === 1 && r[0] === 'KR') return 'ko';
     if (category === 'music' && r.length === 1 && r[0] === 'JP') return 'ja';
     return 'en';
