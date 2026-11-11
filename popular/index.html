@@ -1,0 +1,638 @@
+<title>유튜브 실시간 인기</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: a chart board. Masthead with the collection stamp, one row of ranking and filter controls, then the ranked grid. */
+:root{
+  --paper:#EEF1F6;
+  --sheet:#FFFFFF;
+  --ink:#131A2A;
+  --ink-2:#4D586E;
+  --rule:#D3D9E4;
+  --marker:#FFD400;
+  --on-marker:#131A2A;
+  --link:#1D4ED8;
+  --ok:#11734B; --ok-bg:#DDF3E8;
+  --bad:#B42318; --bad-bg:#FDE4E1;
+  --warn:#9A5B00; --warn-bg:#FFF1CC;
+  --unk:#4D586E; --unk-bg:#E6EAF1;
+  --scrim:rgba(10,14,22,.84); --on-scrim:#FFFFFF;
+  --shadow:0 1px 2px rgba(19,26,42,.06),0 8px 24px rgba(19,26,42,.06);
+  --f-display:"Black Han Sans","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-body:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E121A; --sheet:#161C28; --ink:#E7ECF4; --ink-2:#A2ADC1; --rule:#2A3346;
+    --marker:#FFD400; --on-marker:#131A2A; --link:#93B4FF;
+    --ok:#5FD4A0; --ok-bg:#12322A; --bad:#FF8A7E; --bad-bg:#3A1A18;
+    --warn:#FFC24D; --warn-bg:#3A2C0C; --unk:#A2ADC1; --unk-bg:#232B3B;
+    --scrim:rgba(10,14,22,.84); --on-scrim:#FFFFFF;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E121A; --sheet:#161C28; --ink:#E7ECF4; --ink-2:#A2ADC1; --rule:#2A3346;
+  --marker:#FFD400; --on-marker:#131A2A; --link:#93B4FF;
+  --ok:#5FD4A0; --ok-bg:#12322A; --bad:#FF8A7E; --bad-bg:#3A1A18;
+  --warn:#FFC24D; --warn-bg:#3A2C0C; --unk:#A2ADC1; --unk-bg:#232B3B;
+  --scrim:rgba(10,14,22,.84); --on-scrim:#FFFFFF;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 56px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--paper)}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--link);outline-offset:2px}
+h1,h2,p{margin:0}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+
+/* masthead */
+.mast{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 24px;padding-block:26px 12px;border-bottom:3px solid var(--ink)}
+.kicker{font-family:var(--f-mono);font-size:12px;font-weight:600;letter-spacing:.08em;color:var(--ink-2)}
+.mast h1{font-family:var(--f-display);font-weight:400;font-size:clamp(30px,6vw,44px);line-height:1.1;letter-spacing:-.01em;text-wrap:balance}
+.status{display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:0}
+.stamp{font-family:var(--f-mono);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:8px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none}
+.dot.stale{background:var(--warn)}
+.btn{min-height:40px;padding:0 14px;border:1px solid var(--ink);border-radius:8px;background:var(--sheet);font-weight:700;font-size:14px}
+.btn:hover{background:var(--marker);color:var(--on-marker);border-color:var(--on-marker)}
+.btn:disabled{opacity:.55;cursor:wait}
+.btn.quiet{border-color:var(--rule);font-weight:500;min-height:32px;padding:0 10px;font-size:13px}
+
+/* search */
+.search{display:flex;align-items:center;gap:8px;min-height:48px;padding:0 6px 0 14px;background:var(--sheet);border:1px solid var(--rule);border-radius:10px}
+.search:focus-within{border-color:var(--ink)}
+.search svg{flex:none;color:var(--ink-2)}
+.search input{flex:1;min-width:0;border:0;background:transparent;outline:none;font-size:16px;padding:10px 0}
+.search input::-webkit-search-cancel-button{appearance:none}
+.clear{flex:none;width:40px;height:40px;border:0;background:transparent;border-radius:8px;font-size:20px;color:var(--ink-2)}
+.clear:hover{color:var(--ink)}
+
+/* controls */
+.bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 20px}
+.tabs{display:flex;gap:18px;flex:none}
+.tab{min-height:44px;padding:0 2px;border:0;background:transparent;font-size:16px;font-weight:700;color:var(--ink-2)}
+.tab:hover{color:var(--ink)}
+.tab[aria-pressed="true"]{color:var(--ink);box-shadow:inset 0 -4px 0 var(--marker)}
+.filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
+.sel{display:flex;align-items:center;min-height:40px;padding-left:12px;background:var(--sheet);border:1px solid var(--rule);border-radius:8px;font-size:14px;min-width:0}
+.sel:focus-within{border-color:var(--ink)}
+.sel span{color:var(--ink-2);white-space:nowrap}
+.sel select{min-width:0;height:38px;border:0;background:transparent;font-weight:700;padding:0 8px 0 6px;outline:none}
+.sw{display:flex;align-items:center;gap:8px;min-height:40px;padding:0 12px 0 10px;border:1px solid var(--rule);border-radius:999px;background:var(--sheet);font-size:14px;font-weight:700;white-space:nowrap}
+.sw i{position:relative;width:32px;height:18px;border-radius:999px;background:var(--rule);flex:none;transition:background .15s}
+.sw i::after{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:var(--sheet);transition:transform .15s}
+.sw[aria-checked="true"]{border-color:var(--ink)}
+.sw[aria-checked="true"] i{background:var(--ink)}
+.sw[aria-checked="true"] i::after{transform:translateX(14px);background:var(--marker)}
+.sw:disabled{opacity:.5;cursor:not-allowed}
+.chip{display:flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border:1px solid var(--rule);border-radius:8px;background:var(--sheet);font-size:14px;font-weight:700;white-space:nowrap}
+.chip b{font-family:var(--f-mono);font-weight:600;font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+.summary{font-size:13px;color:var(--ink-2);min-height:32px;line-height:32px}
+.summary b{font-family:var(--f-mono);font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.summary .btn{margin-left:12px;vertical-align:middle;line-height:1.2}
+.notice{padding:10px 14px;border-radius:8px;font-size:14px;background:var(--unk-bg);color:var(--ink)}
+.notice.bad{background:var(--bad-bg);color:var(--bad)}
+.notice.ok{background:var(--ok-bg);color:var(--ok)}
+.notice.warn{background:var(--warn-bg);color:var(--warn)}
+
+/* ranked grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px}
+.card{display:flex;flex-direction:column;min-width:0;background:var(--sheet);border:1px solid var(--rule);border-radius:10px;overflow:hidden;transition:border-color .15s,box-shadow .15s}
+.card:hover{border-color:var(--ink);box-shadow:var(--shadow)}
+.media{position:relative}
+.thumb{display:block;position:relative;aspect-ratio:16/9;max-width:100%;overflow:hidden;background:var(--unk-bg);text-decoration:none}
+.poster{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--f-display);font-size:26px;color:var(--ink-2);
+  background:repeating-linear-gradient(135deg,transparent 0 14px,var(--rule) 14px 15px)}
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.rank{position:absolute;left:8px;top:8px;min-width:34px;padding:2px 8px;border-radius:6px;background:var(--marker);color:var(--on-marker);
+  font-family:var(--f-display);font-size:20px;line-height:1.35;text-align:center}
+.dur{position:absolute;right:8px;bottom:8px;padding:1px 6px;border-radius:5px;background:var(--scrim);color:var(--on-scrim);
+  font-family:var(--f-mono);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.save{position:absolute;right:8px;top:8px;width:40px;height:40px;display:grid;place-items:center;border:1px solid transparent;border-radius:50%;background:var(--scrim);color:var(--on-scrim)}
+.save:hover{border-color:var(--on-scrim)}
+.save[aria-pressed="true"]{background:var(--marker);color:var(--on-marker)}
+.save[aria-pressed="true"] path{fill:currentColor}
+.body{display:flex;flex-direction:column;gap:6px;flex:1;min-width:0;padding:12px 14px 14px}
+.state{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 10px;font-size:12px}
+.now{font-weight:700;color:var(--ok)}
+.now.off{color:var(--ink-2);font-weight:500}
+.vel{font-family:var(--f-mono);font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink)}
+.card h2{font-size:15px;font-weight:700;line-height:1.45;letter-spacing:-.01em;min-height:2.9em;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
+.card h2 a{color:inherit;text-decoration:none}
+.card h2 a:hover{text-decoration:underline}
+.chan{font-size:13px;font-weight:500;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.meta b{color:var(--ink);font-weight:700}
+.tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:auto;padding-top:6px}
+.tag{font-size:12px;padding:1px 7px;border-radius:5px;background:var(--unk-bg);color:var(--ink-2);white-space:nowrap}
+.tag.cc{background:var(--ok-bg);color:var(--ok);font-weight:700}
+.copy{margin-left:auto}
+
+.skel{aspect-ratio:4/3.6;border-radius:10px;background:var(--unk-bg)}
+.more{display:flex;justify-content:center;padding-top:8px}
+.empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:48px 16px;text-align:center;background:var(--sheet);border:1px dashed var(--rule);border-radius:10px}
+.empty strong{font-size:17px}
+.empty p{color:var(--ink-2);max-width:44ch}
+.foot{display:flex;flex-direction:column;gap:4px;padding-top:14px;border-top:1px solid var(--rule);font-size:13px;color:var(--ink-2);max-width:78ch}
+.foot a{color:var(--link)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:20;max-width:calc(100% - 32px);
+  display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;background:var(--ink);color:var(--paper);font-size:14px;box-shadow:var(--shadow)}
+.toast input{width:min(60vw,320px);border:0;border-radius:4px;padding:4px 6px;background:var(--paper);color:var(--ink);font-family:var(--f-mono);font-size:12px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+@media (max-width:640px){
+  .status{align-items:flex-start}
+  .filters{display:grid;grid-template-columns:1fr 1fr;width:100%}
+  .sel,.sw,.chip{width:100%;justify-content:flex-start}
+  .sel select{flex:1}
+  .sel.wide{grid-column:1/-1}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <div>
+      <p class="kicker">YOUTUBE 차트 · 한국 / 미국 / 일본</p>
+      <h1>실시간 인기</h1>
+    </div>
+    <div class="status">
+      <p class="stamp" aria-live="polite"><span class="dot" id="dot" aria-hidden="true"></span><span class="sr">마지막 업데이트 </span><span id="stamp">불러오는 중</span></p>
+      <button type="button" class="btn" id="liveBtn" hidden>지금 새로 받기</button>
+    </div>
+  </header>
+
+  <form class="search" role="search" id="searchForm">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m16 16 5 5"></path></svg>
+    <label class="sr" for="q">제목이나 채널명 검색</label>
+    <input id="q" type="search" maxlength="100" placeholder="제목·채널 검색" enterkeyhint="search" autocomplete="off">
+    <button type="button" class="clear" id="clearQ" aria-label="검색 지우기" hidden>×</button>
+  </form>
+
+  <div class="bar" role="region" aria-label="인기 영상 필터">
+    <div class="tabs" role="group" aria-label="인기 기준">
+      <button type="button" class="tab" id="tabTrending" data-sort="trending" aria-pressed="true">인기 급상승</button>
+      <button type="button" class="tab" id="tabViews" data-sort="views" aria-pressed="false">조회수 상위</button>
+    </div>
+    <div class="filters">
+      <label class="sel"><span>수집 기간</span>
+        <select id="period"><option value="all">전체</option><option value="today">오늘 수집</option><option value="week">최근 7일</option></select></label>
+      <label class="sel"><span>언어</span>
+        <select id="lang"><option value="all">전체 언어</option></select></label>
+      <label class="sel wide"><span>카테고리</span>
+        <select id="category"><option value="all">전체</option></select></label>
+      <button type="button" class="sw" id="longOnly" role="switch" aria-checked="false"><i aria-hidden="true"></i>롱폼만</button>
+      <button type="button" class="sw" id="reusableOnly" role="switch" aria-checked="false"><i aria-hidden="true"></i>재사용 허용만</button>
+      <button type="button" class="chip" id="savedOnly" aria-pressed="false">저장한 영상 <b id="savedCount">0</b></button>
+    </div>
+  </div>
+
+  <p class="summary" id="summary" aria-live="polite"></p>
+  <div class="notice" id="liveMsg" role="status" hidden></div>
+
+  <div class="grid" id="grid" aria-busy="true">
+    <div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div>
+  </div>
+  <div class="empty" id="empty" hidden>
+    <strong id="emptyTitle"></strong>
+    <p id="emptyHint"></p>
+    <button type="button" class="btn" id="emptyBtn"></button>
+  </div>
+  <div class="more"><button type="button" class="btn" id="more" hidden>더 보기</button></div>
+
+  <footer class="foot">
+    <p>급상승 순위는 시간당 조회수 증가로 매깁니다. 직전 수집과 비교할 수 있으면 그 사이 증가분, 처음 수집한 영상은 게시 후 평균입니다. '지금 급상승'은 가장 최근 수집 때 차트에 있던 영상입니다.</p>
+    <p>롱폼은 3분을 넘는 영상입니다. 언어는 제목과 채널명의 글자로 추정한 값입니다.</p>
+    <p id="licenseNote" hidden>이번 수집분에는 라이선스 정보가 없어 '재사용 허용만'은 꺼져 있습니다. API 키로 수집하면 채워집니다.</p>
+    <p id="thumbNote" hidden>이 화면에서는 외부 이미지를 불러올 수 없어 썸네일 자리에 카테고리 표지를 넣었습니다.</p>
+    <p id="sourceNote">자료: YouTube Data API v3 인기 차트(mostPopular).</p>
+  </footer>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="core.js"></script>
+<script>
+(function () {
+  'use strict';
+  var C = window.PopularCore;
+  var $ = function (id) { return document.getElementById(id); };
+  var PAGE = 24;
+  var F_KEY = 'popular:filters:v1', S_KEY = 'popular:saved:v1';
+  var DEFAULTS = { sort: 'trending', period: 'all', category: 'all', lang: 'all', longOnly: false, reusableOnly: false };
+
+  function read(key, fallback) {
+    try { var v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; }
+  }
+  function write(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {} }
+
+  var f = {};
+  var stored = read(F_KEY, {});
+  Object.keys(DEFAULTS).forEach(function (k) { f[k] = stored[k] === undefined ? DEFAULTS[k] : stored[k]; });
+  f.q = ''; f.savedOnly = false;
+  var saved = read(S_KEY, {});      // videoId → 저장 당시의 영상 정보
+  var base = null;                  // data.json 그대로
+  var state = null;                 // 화면에 쓰는 상태 (실시간으로 받은 것까지 합친 것)
+  var liveAt = 0;
+  var shown = PAGE;
+  var thumbs = { ok: 0, fail: 0 };
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  var CAT_LABEL = {}, LANG_LABEL = { other: '기타' };
+  C.CATEGORIES.forEach(function (c) { CAT_LABEL[c.value] = c.label; $('category').appendChild(new Option(c.label, c.value)); });
+  C.LANGS.forEach(function (l) { LANG_LABEL[l.value] = l.label; $('lang').appendChild(new Option(l.label, l.value)); });
+
+  var BOOKMARK = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M6 4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21l-6-4-6 4V4.5Z"></path></svg>';
+
+  function urlOf(id) { return 'https://www.youtube.com/watch?v=' + encodeURIComponent(id); }
+
+  function card(row, rank, now) {
+    var it = row.item, url = urlOf(it.videoId);
+    var a = el('article', 'card');
+    a.dataset.id = it.videoId;
+
+    var media = el('div', 'media');
+    var thumb = el('a', 'thumb');
+    thumb.href = url; thumb.target = '_blank'; thumb.rel = 'noopener';
+    thumb.setAttribute('aria-label', rank + '위 ' + it.title + ' 유튜브에서 열기');
+    var poster = el('span', 'poster', CAT_LABEL[it.category] || '');
+    poster.setAttribute('aria-hidden', 'true');
+    thumb.appendChild(poster);
+    if (thumbs.fail === 0 || thumbs.ok > 0) {
+      var img = el('img');
+      img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
+      img.src = 'https://i.ytimg.com/vi/' + encodeURIComponent(it.videoId) + '/hqdefault.jpg';
+      thumb.appendChild(img);
+    }
+    thumb.appendChild(el('span', 'rank', String(rank)));
+    if (it.durationSeconds) thumb.appendChild(el('span', 'dur', C.fmtDuration(it.durationSeconds)));
+    media.appendChild(thumb);
+    var on = !!saved[it.videoId];
+    var save = el('button', 'save');
+    save.type = 'button'; save.innerHTML = BOOKMARK;
+    save.setAttribute('aria-pressed', String(on));
+    save.setAttribute('aria-label', (on ? '저장 취소: ' : '저장: ') + it.title);
+    save.title = on ? '저장 취소' : '저장';
+    media.appendChild(save);
+    a.appendChild(media);
+
+    var body = el('div', 'body');
+    var st = el('p', 'state');
+    st.appendChild(el('span', row.current ? 'now' : 'now off', row.current ? '지금 급상승' : '이전 수집분'));
+    var vel = el('span', 'vel', '시간당 +' + C.fmtCount(row.perHour));
+    vel.title = row.basis === 'delta' ? '직전 수집 이후 늘어난 조회수를 시간당으로 환산' : '게시 후 지금까지의 시간당 평균 조회수';
+    st.appendChild(vel);
+    body.appendChild(st);
+    var h = el('h2');
+    var link = el('a', null, it.title);
+    link.href = url; link.target = '_blank'; link.rel = 'noopener';
+    h.appendChild(link);
+    body.appendChild(h);
+    body.appendChild(el('p', 'chan', it.channelName));
+    var meta = el('p', 'meta');
+    meta.appendChild(document.createTextNode('조회수 '));
+    meta.appendChild(el('b', null, C.fmtCount(it.viewCount) + '회'));
+    meta.appendChild(document.createTextNode(' · ' + C.fmtAge(it.publishedAt, now)));
+    body.appendChild(meta);
+    var tags = el('div', 'tags');
+    tags.appendChild(el('span', 'tag', CAT_LABEL[it.category] || '기타'));
+    tags.appendChild(el('span', 'tag', LANG_LABEL[it.lang] || '기타'));
+    if (it.license === 'creativeCommon') tags.appendChild(el('span', 'tag cc', '재사용 허용'));
+    var copy = el('button', 'btn quiet copy', '링크 복사');
+    copy.type = 'button';
+    tags.appendChild(copy);
+    body.appendChild(tags);
+    a.appendChild(body);
+    return a;
+  }
+
+  function currentRows(now) {
+    if (!f.savedOnly) return C.select(state, f, now);
+    var live = {};
+    state.items.forEach(function (it) { live[it.videoId] = it; });
+    var items = Object.keys(saved).map(function (id) { return live[id] || saved[id]; });
+    var g = {};
+    Object.keys(f).forEach(function (k) { g[k] = f[k]; });
+    g.keepStale = true;
+    return C.select({ updatedAt: state.updatedAt, items: items }, g, now);
+  }
+
+  function isFiltered() {
+    return f.q || f.savedOnly || Object.keys(DEFAULTS).some(function (k) { return k !== 'sort' && f[k] !== DEFAULTS[k]; });
+  }
+
+  function render() {
+    if (!state) return;
+    var now = Date.now();
+    var licensed = C.hasLicenseData(state);
+    if (!licensed) f.reusableOnly = false;
+    $('reusableOnly').disabled = !licensed;
+    $('reusableOnly').title = licensed ? '' : '이번 수집분에는 라이선스 정보가 없습니다';
+    $('licenseNote').hidden = licensed;
+
+    $('tabTrending').setAttribute('aria-pressed', String(f.sort !== 'views'));
+    $('tabViews').setAttribute('aria-pressed', String(f.sort === 'views'));
+    $('period').value = f.period; $('category').value = f.category; $('lang').value = f.lang;
+    $('longOnly').setAttribute('aria-checked', String(!!f.longOnly));
+    $('reusableOnly').setAttribute('aria-checked', String(!!f.reusableOnly));
+    $('savedOnly').setAttribute('aria-pressed', String(!!f.savedOnly));
+    $('savedCount').textContent = String(Object.keys(saved).length);
+    $('clearQ').hidden = !f.q;
+
+    var rows = currentRows(now);
+    var grid = $('grid');
+    grid.textContent = '';
+    grid.setAttribute('aria-busy', 'false');
+    rows.slice(0, shown).forEach(function (row, i) { grid.appendChild(card(row, i + 1, now)); });
+    grid.hidden = rows.length === 0;
+    $('more').hidden = rows.length <= shown;
+    $('more').textContent = '더 보기 (' + Math.min(PAGE, rows.length - shown) + '개)';
+
+    var summary = $('summary');
+    summary.textContent = '';
+    var hot = rows.filter(function (r) { return r.current; }).length;
+    summary.appendChild(document.createTextNode(f.savedOnly ? '저장한 영상 ' : '영상 '));
+    summary.appendChild(el('b', null, rows.length + '개'));
+    if (!f.savedOnly) {
+      summary.appendChild(document.createTextNode(' · 지금 급상승 '));
+      summary.appendChild(el('b', null, hot + '개'));
+    }
+    if (isFiltered()) {
+      var reset = el('button', 'btn quiet', '조건 초기화');
+      reset.type = 'button'; reset.id = 'reset';
+      summary.appendChild(reset);
+    }
+
+    var empty = $('empty');
+    empty.hidden = rows.length > 0;
+    if (!rows.length) {
+      var noSaved = f.savedOnly && !Object.keys(saved).length;
+      $('emptyTitle').textContent = noSaved ? '저장한 영상이 아직 없습니다' : f.q ? '검색 결과가 없습니다' : '조건에 맞는 영상이 없습니다';
+      $('emptyHint').textContent = noSaved ? '카드 오른쪽 위 책갈피를 누르면 여기에 모입니다. 이 기기 브라우저에만 저장됩니다.'
+        : f.q ? '검색어를 바꾸거나 필터를 조정해 보세요.' : '인기 기준, 수집 기간, 언어, 카테고리, 영상 길이 조건을 바꿔 보세요.';
+      $('emptyBtn').textContent = noSaved ? '전체 영상 보기' : '조건 초기화';
+    }
+    renderStamp();
+  }
+
+  function renderStamp() {
+    var hours = (Date.now() - Date.parse(state.updatedAt)) / 3600000;
+    var text = C.fmtStamp(state.updatedAt) + (liveAt ? ' 실시간 반영' : ' 수집');
+    if (hours >= 6) text += ' · ' + (hours >= 48 ? Math.floor(hours / 24) + '일' : Math.floor(hours) + '시간') + ' 전 자료';
+    $('stamp').textContent = text;
+    $('dot').className = hours >= 6 ? 'dot stale' : 'dot';
+  }
+
+  function resetFilters() {
+    Object.keys(DEFAULTS).forEach(function (k) { if (k !== 'sort') f[k] = DEFAULTS[k]; });
+    f.q = ''; f.savedOnly = false; $('q').value = '';
+    changed();
+  }
+  function changed() {
+    shown = PAGE;
+    var keep = {};
+    Object.keys(DEFAULTS).forEach(function (k) { keep[k] = f[k]; });
+    write(F_KEY, keep);
+    render();
+  }
+
+  // ── 조작 ──
+  ['tabTrending', 'tabViews'].forEach(function (id) {
+    $(id).addEventListener('click', function () { f.sort = this.dataset.sort; changed(); });
+  });
+  ['period', 'category', 'lang'].forEach(function (id) {
+    $(id).addEventListener('change', function () { f[id] = this.value; changed(); });
+  });
+  ['longOnly', 'reusableOnly', 'savedOnly'].forEach(function (id) {
+    $(id).addEventListener('click', function () { f[id] = !f[id]; changed(); });
+  });
+  var qTimer = 0;
+  $('q').addEventListener('input', function () {
+    var v = this.value;
+    clearTimeout(qTimer);
+    qTimer = setTimeout(function () { f.q = v; changed(); }, 150);
+  });
+  $('searchForm').addEventListener('submit', function (e) { e.preventDefault(); clearTimeout(qTimer); f.q = $('q').value; changed(); });
+  $('clearQ').addEventListener('click', function () { $('q').value = ''; f.q = ''; changed(); $('q').focus(); });
+  $('more').addEventListener('click', function () { shown += PAGE; render(); });
+  $('emptyBtn').addEventListener('click', resetFilters);
+  $('summary').addEventListener('click', function (e) { if (e.target.id === 'reset') resetFilters(); });
+
+  var toastTimer = 0;
+  function toast(text, url) {
+    var t = $('toast');
+    t.textContent = text;
+    if (url) {
+      var box = el('input');
+      box.readOnly = true; box.value = url; box.setAttribute('aria-label', '영상 주소');
+      t.appendChild(box);
+      box.focus(); box.select();
+    }
+    t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.hidden = true; }, url ? 9000 : 2200);
+  }
+
+  $('grid').addEventListener('click', function (e) {
+    var btn = e.target.closest('button');
+    if (!btn) return;
+    var id = btn.closest('.card').dataset.id;
+    if (btn.classList.contains('copy')) {
+      var url = urlOf(id);
+      var done = function () { toast('링크를 복사했습니다'); };
+      var manual = function () { toast('직접 복사해 주세요', url); };
+      try { navigator.clipboard.writeText(url).then(done, manual); } catch (err) { manual(); }
+    } else if (btn.classList.contains('save')) {
+      if (saved[id]) delete saved[id];
+      else {
+        var it = state.items.filter(function (x) { return x.videoId === id; })[0];
+        if (it) saved[id] = it;
+      }
+      write(S_KEY, saved);
+      render();
+    }
+  });
+
+  // 썸네일을 못 불러오는 화면(외부 이미지 차단)에서는 카테고리 표지만 남긴다.
+  $('grid').addEventListener('error', function (e) {
+    if (e.target.tagName !== 'IMG') return;
+    thumbs.fail += 1;
+    e.target.remove();
+    $('thumbNote').hidden = thumbs.ok > 0;
+  }, true);
+  $('grid').addEventListener('load', function (e) {
+    if (e.target.tagName !== 'IMG') return;
+    thumbs.ok += 1;
+    $('thumbNote').hidden = true;
+  }, true);
+
+  // ── 자료 불러오기: 같은 폴더의 data.json ──
+  function loadSnapshot(first) {
+    return fetch('data.json', { cache: 'no-store' }).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }).then(function (doc) {
+      if (!doc || !Array.isArray(doc.items)) throw new Error('형식 오류');
+      if (base && doc.updatedAt === base.updatedAt) return;
+      base = doc;
+      if (doc.source) $('sourceNote').textContent = '자료: ' + doc.source + '.';
+      if (!liveAt || Date.parse(doc.updatedAt) > liveAt) { state = { schema: 1, updatedAt: doc.updatedAt, items: doc.items.slice() }; liveAt = 0; }
+      render();
+    }).catch(function () {
+      if (!first) return;      // 주기적 확인이 실패하면 보던 화면을 그대로 둔다
+      $('grid').hidden = true;
+      $('stamp').textContent = '불러오지 못함';
+      $('dot').className = 'dot stale';
+      $('empty').hidden = false;
+      $('emptyTitle').textContent = '인기 영상을 불러오지 못했습니다';
+      $('emptyHint').textContent = '같은 폴더의 data.json을 읽지 못했습니다. 파일을 직접 열었다면 웹 서버나 게시된 주소로 열어 주세요.';
+      $('emptyBtn').textContent = '다시 시도';
+      $('emptyBtn').onclick = function () { $('emptyBtn').onclick = null; $('empty').hidden = true; $('grid').hidden = false; loadSnapshot(true); };
+    });
+  }
+  loadSnapshot(true);
+  setInterval(function () { if (document.visibilityState === 'visible' && base) loadSnapshot(false); }, 5 * 60 * 1000);
+  setInterval(function () { if (state) renderStamp(); }, 60 * 1000);
+
+  // ── 실시간: 이 페이지를 claude.ai에서 열면 보는 사람의 PlayMCP 커넥터로 차트를 바로 받는다 ──
+  var LIVE = {
+    server: 'PlayMCP', tool: 'YouTubeData-get_trending_videos',
+    plan: [['KR', null], ['KR', '24'], ['KR', '17'], ['KR', '25'], ['KR', '28'], ['KR', '26'], ['US', null], ['JP', null]],
+    cache: { staleTime: 4 * 60 * 1000, gcTime: 30 * 60 * 1000 }
+  };
+  var DENIED = { needs_reauth: 1, server_not_connected: 1, selection_required: 1, server_not_found: 1, not_in_manifest: 1,
+    blocked_by_policy: 1, approval_required: 1, consent_required: 1, not_granted: 1 };
+  var GONE = { capability_disabled: 1, capability_removed: 1, user_changed: 1 };
+  var mcp = null, unsubs = [], renderTimer = 0, busy = false;
+
+  function liveMsg(text, tone) {
+    var n = $('liveMsg');
+    n.hidden = !text;
+    n.className = 'notice' + (tone ? ' ' + tone : '');
+    n.textContent = text || '';
+  }
+  function explain(err) {
+    var code = err && err.code;
+    if (code === 'needs_reauth') return 'PlayMCP 연결이 만료됐습니다. claude.ai 설정 → 커넥터에서 PlayMCP를 다시 연결한 뒤 눌러 주세요.';
+    if (code === 'server_not_connected' || code === 'server_not_found') return 'PlayMCP 커넥터가 연결돼 있지 않습니다. claude.ai 설정 → 커넥터에서 PlayMCP를 추가하면 실시간으로 받을 수 있습니다.';
+    if (code === 'selection_required') return 'PlayMCP 커넥터가 여러 개입니다. claude.ai에서 쓸 것을 고른 뒤 다시 눌러 주세요.';
+    if (code === 'not_in_manifest' || code === 'approval_required' || code === 'consent_required' || code === 'not_granted') return '이 페이지가 PlayMCP를 쓰도록 허용해야 실시간으로 받을 수 있습니다. 허용하려면 다시 눌러 주세요.';
+    if (code === 'blocked_by_policy') return '조직 정책으로 이 페이지에서 PlayMCP 유튜브 조회를 쓸 수 없습니다.';
+    if (code === 'tool_error') return '유튜브 조회가 실패했습니다: ' + ((err && err.message) || '알 수 없는 오류');
+    if (code === 'server_unavailable' || code === 'rate_limited' || code === 'upstream_error') return 'PlayMCP가 잠시 응답하지 않습니다. 조금 뒤에 다시 눌러 주세요.';
+    return '실시간 자료를 받지 못했습니다' + (code ? ' (' + code + ')' : '') + '.';
+  }
+  function inputOf(p) {
+    var input = { region_code: p[0], max_results: 50 };
+    if (p[1]) input.category_id = p[1];
+    return input;
+  }
+  function payloadOf(result) {
+    if (!result) return null;
+    if (result.payload !== undefined) return result.payload;
+    var blocks = result.content || [];
+    for (var i = 0; i < blocks.length; i++) if (blocks[i].type === 'text') return blocks[i].text;
+    return null;
+  }
+  function applyLive(sightings, atMs) {
+    state = C.merge(state, sightings, new Date(atMs).toISOString());
+    liveAt = Math.max(liveAt, atMs);
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(render, 250);
+  }
+  function stopLive(err) {
+    unsubs.forEach(function (u) { try { u(); } catch (e) {} });
+    unsubs = [];
+    if (base) { state = { schema: 1, updatedAt: base.updatedAt, items: base.items.slice() }; liveAt = 0; render(); }
+    if (GONE[err && err.code]) { $('liveBtn').hidden = true; liveMsg('', ''); }
+    else liveMsg(explain(err) + ' 지금은 저장된 수집분을 보여 줍니다.', 'warn');
+  }
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function callOnce(p, retried) {
+    return mcp.callTool(LIVE.server, LIVE.tool, inputOf(p), { cache: LIVE.cache }).catch(function (err) {
+      if (err && err.retryable && !retried) {
+        return wait(Math.min(err.retryAfterMs || 1200 + Math.random() * 1200, 15000)).then(function () { return callOnce(p, true); });
+      }
+      throw err;
+    });
+  }
+  function startWatches() {
+    if (unsubs.length) return;
+    LIVE.plan.forEach(function (p) {
+      try {
+        unsubs.push(mcp.watchTool(LIVE.server, LIVE.tool, inputOf(p), function (ev) {
+          if (ev.type === 'data') {
+            var s = C.sightingsFromTool(payloadOf(ev.result), p[0]);
+            var stored = ev.result && ev.result.cache && ev.result.cache.storedAt;
+            if (s.length) applyLive(s, stored || Date.now());
+          } else if (ev.error && (DENIED[ev.error.code] || GONE[ev.error.code])) {
+            stopLive(ev.error);
+          }
+        }, { cache: LIVE.cache, refetchInterval: 10 * 60 * 1000 }));
+      } catch (e) { /* 실시간 갱신 없이 버튼만 쓴다 */ }
+    });
+  }
+  function refreshLive() {
+    if (busy || !mcp || !state) return;
+    busy = true;
+    var btn = $('liveBtn');
+    btn.disabled = true;
+    liveMsg('', '');
+    var got = 0, failed = [], lastErr = null, all = [], i = 0;
+    function next() {
+      if (i >= LIVE.plan.length) return Promise.resolve();
+      var p = LIVE.plan[i++];
+      btn.textContent = '받는 중 ' + i + '/' + LIVE.plan.length;
+      return callOnce(p, false).then(function (result) {
+        var s = C.sightingsFromTool(payloadOf(result), p[0]);
+        if (s.length) { got += 1; all = all.concat(s); }
+        else { failed.push(p[0] + (p[1] ? '/' + p[1] : '')); }
+      }, function (err) {
+        lastErr = err;
+        failed.push(p[0] + (p[1] ? '/' + p[1] : ''));
+        if (err && (DENIED[err.code] || GONE[err.code])) i = LIVE.plan.length;   // 남은 호출도 같은 이유로 막힌다
+      }).then(next);
+    }
+    next().then(function () {
+      busy = false;
+      btn.disabled = false;
+      btn.textContent = '지금 새로 받기';
+      if (got) {
+        applyLive(all, Date.now());
+        liveMsg(failed.length ? '차트 ' + LIVE.plan.length + '개 중 ' + got + '개를 새로 받았습니다. 받지 못한 차트: ' + failed.join(', ') + '.'
+          : '차트 ' + got + '개를 방금 받아 반영했습니다. 이 화면을 열어 두면 10분마다 다시 받습니다.', failed.length ? 'warn' : 'ok');
+        startWatches();
+      } else if (lastErr && GONE[lastErr.code]) {
+        btn.hidden = true;
+      } else {
+        liveMsg(lastErr ? explain(lastErr) : '받은 응답에서 영상 목록을 찾지 못했습니다. 커넥터 응답 형식이 바뀐 것 같습니다.', 'bad');
+      }
+    });
+  }
+  $('liveBtn').addEventListener('click', refreshLive);
+  if (window.claude && typeof window.claude.use === 'function') {
+    window.claude.use('mcp').then(function (ns) {
+      if (!ns) return;
+      mcp = ns;
+      $('liveBtn').hidden = false;
+    }, function () {});
+  }
+})();
+</script>
