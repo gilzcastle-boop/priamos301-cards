@@ -1,0 +1,48 @@
+# popular/ 폴더만 GitHub Pages에 올린다.
+# 저장소 전체(카드·릴스 수백 MB)를 올리면 Pages의 게시 한도 1GB에 걸리므로 이 폴더만 게시한다.
+# 먼저 저장소 Settings → Pages → Source 를 "GitHub Actions"로 바꿔 두어야 한다.
+# 게시 주소: https://<계정>.github.io/<저장소>/popular/
+name: Publish popular page
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'popular/**'
+      - '.github/workflows/popular-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout popular/ only
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: popular
+      - name: Build site folder
+        run: |
+          mkdir -p _site
+          cp -r popular _site/popular
+          echo '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=popular/"><a href="popular/">유튜브 실시간 인기</a>' > _site/index.html
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
