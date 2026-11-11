@@ -2,7 +2,7 @@
 /*
  * 유튜브 인기 영상 수집기 → popular/data.json
  *
- *   YOUTUBE_API_KEY=... node tools/fetch_popular.js
+ *   YOUTUBE_API_KEY=... node tools/fetch_popular.js   (환경이 키를 대신 넣어 주면 YOUTUBE_API_KEY 없이 실행)
  *       YouTube Data API v3로 한국·미국·일본 차트(18회, 18단위)와 재사용 허용(CC) 인기 영상
  *       (나라별 검색 1회 + 상세 1단위)을 받아 합친다. 키는 X-Goog-Api-Key 헤더로 보낸다.
  *       기본 한도: 검색은 하루 100회, 그 밖의 호출은 합쳐서 하루 10,000단위.
@@ -76,10 +76,15 @@ function ingest(files) {
 
 (async () => {
   if (ingestFiles) return ingest(ingestFiles);
-  const key = process.env.YOUTUBE_API_KEY;
-  if (!key) {
-    console.error('YOUTUBE_API_KEY 환경변수가 없습니다. Google Cloud 콘솔에서 YouTube Data API v3 키를 만들어 넣어 주세요.');
-    process.exit(2);
-  }
+  // 키를 환경변수로 주지 않았으면 자리표시 값을 보낸다. 실행 환경이 www.googleapis.com 요청의
+  // X-Goog-Api-Key 헤더에 저장된 키를 대신 넣어 주는 경우(네트워크 시크릿) 그대로 동작한다.
+  const key = process.env.YOUTUBE_API_KEY || 'set-by-environment';
   await collectFromApi(key);
-})().catch((e) => { console.error(`실패: ${e.message}`); process.exit(1); });
+})().catch((e) => {
+  console.error(`실패: ${e.message}`);
+  if (/API key not valid|unregistered callers/i.test(e.message)) {
+    console.error('YouTube Data API 키가 전달되지 않았습니다. YOUTUBE_API_KEY 환경변수를 넣거나, 실행 환경의 네트워크 시크릿에 '
+      + 'www.googleapis.com / X-Goog-Api-Key 로 키를 저장해 주세요.');
+  }
+  process.exit(1);
+});
