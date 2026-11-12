@@ -123,6 +123,44 @@
     ].join('\n');
   }
 
+  function clean(v, max) { return String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, max); }
+
+  // 영상에서 장면 그림을 뽑을 시각들. 구간을 고르게 나누되 minGap초보다 촘촘하게는 뽑지 않는다.
+  function sampleTimes(a, b, maxFrames, minGap) {
+    var len = b - a;
+    if (!(len > 0)) return [];
+    var n = Math.max(1, Math.min(maxFrames, Math.floor(len / minGap)));
+    var step = len / n, out = [];
+    for (var i = 0; i < n; i++) out.push(Math.round((a + step * (i + 0.5)) * 10) / 10);
+    return out;
+  }
+
+  // 장면 그림(시각이 찍힌 모음 그림)을 함께 보낼 때의 요청문. 자막 글이 있으면 같이 붙인다.
+  function buildVisionPrompt(o) {
+    var lines = cuesInRange(o.cues || [], o.range[0], o.range[1]).map(function (q) { return '[' + fmtTime(q.start) + '] ' + q.text; });
+    var out = [
+      '너는 예능·토크·정보 영상을 숏폼으로 자르는 편집자다.',
+      '첨부한 그림 ' + o.sheets + '장은 영상 한 편의 장면을 시간순으로 뽑아 붙인 것이다. 장면마다 왼쪽 위에 그 장면의 시각(분:초)이 찍혀 있다. 장면 안에 보이는 자막과 글자도 읽어라.'
+    ];
+    if (o.info) out.push('영상 정보(올린 사람이 적어 준 것): ' + o.info);
+    out.push(
+      '이 영상의 ' + fmtTime(o.range[0]) + ' ~ ' + fmtTime(o.range[1]) + ' 가운데 따로 떼어 놓아도 이해되고 끝까지 보게 되는 장면을 ' + o.count + '개 골라라.',
+      '규칙:',
+      '- 장면 하나의 길이는 ' + o.minLen + '~' + o.maxLen + '초. 그림 사이의 시각을 써도 된다. 이야기가 시작되는 곳에서 시작하고 마무리되는 곳에서 끝낸다.',
+      '- 장면끼리 겹치지 않게 한다. 영상이 짧아 그만큼 나오지 않으면 개수를 줄인다.',
+      '- title: 누가 무엇을 하는지 한눈에 보이는 ' + (LANG_NAME[o.lang] || '한국어') + ' 제목, 24자 이내. 화면 자막, 영상 정보, 자막 글에 실제로 있는 내용만 쓴다.',
+      '- 사람을 얼굴로 알아보려 하지 않는다. 이름은 화면에 글자로 나왔거나 영상 정보에 적힌 것만 쓴다.',
+      '- tag: 제목 위에 붙일 한두 낱말. 마땅치 않으면 빈 문자열.',
+      '- comment: 편집자가 덧붙이는 한 줄 평, 22자 이내. 사실을 지어내지 않고 누구도 비방하지 않는다.',
+      '- focus: 그 장면에서 주로 보여야 할 대상이 화면의 어느 쪽에 있는지 "left", "center", "right" 가운데 하나.',
+      '- reason: 왜 골랐는지 한 문장.',
+      'JSON 배열만 답한다. start와 end는 영상 처음부터 센 초(숫자)다.',
+      '예: [{"start": 12, "end": 58, "title": "제목", "tag": "", "comment": "한 줄 평", "focus": "center", "reason": "이유"}]'
+    );
+    if (lines.length) out.push('', '자막 글:', lines.join('\n'));
+    return out.join('\n');
+  }
+
   // Claude가 돌려준 장면 목록을 쓸 수 있게 다듬는다: 숫자로 바꾸고, 구간 안으로 넣고, 길이를 맞추고, 겹치면 버린다.
   function normalizeClips(raw, o) {
     var list = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.clips) ? raw.clips : []);
@@ -138,8 +176,10 @@
       if (near) s = near.start;
       if (e - s > o.maxLen + 10) e = s + o.maxLen;
       if (e - s < 8) return;
+      var focus = String(r.focus || '').toLowerCase();
       out.push({ start: Math.round(s * 10) / 10, end: Math.round(e * 10) / 10,
-        title: String(r.title || '').replace(/\s+/g, ' ').trim().slice(0, 60), reason: String(r.reason || '').replace(/\s+/g, ' ').trim().slice(0, 200) });
+        title: clean(r.title, 60), reason: clean(r.reason, 200), tag: clean(r.tag, 16), comment: clean(r.comment, 40),
+        pan: focus === 'left' ? 18 : focus === 'right' ? 82 : 50 });
     });
     out.sort(function (a, b) { return a.start - b.start; });
     var kept = [];
@@ -172,6 +212,7 @@
   return {
     parseTime: parseTime, fmtTime: fmtTime, parseYoutubeLink: parseYoutubeLink, parseTranscript: parseTranscript,
     cuesInRange: cuesInRange, cueAt: cueAt, speechSpans: speechSpans, buildPrompt: buildPrompt,
+    buildVisionPrompt: buildVisionPrompt, sampleTimes: sampleTimes,
     normalizeClips: normalizeClips, safeName: safeName, wrapText: wrapText
   };
 });
