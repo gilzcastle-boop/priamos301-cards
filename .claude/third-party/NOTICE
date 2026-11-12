@@ -7,6 +7,16 @@ ig-profile, ig-reel, ig-reply, ig-repurpose, ig-story, ig-viral
   Modified for this account: Korean-language support in ig-caption/caption.py,
   ig-reel/hookscore.py and ig-reel/beats.py, Korean voice notes in voice.md files.
 
+.claude/skills/yt-audit, yt-chapters, yt-comment, yt-edit, yt-package, yt-plan, yt-retention,
+yt-script, yt-seo, yt-shorts, yt-viral
+  Source: https://github.com/Jakeschincariol/youtube-agent-skill (commit a2feb21, 2026-09-16)
+  Copyright (c) 2026 Jake Schincariol, MIT License (full text: youtube-agent-skill-LICENSE)
+  Modified for this account: Korean-language support in yt-script/hookscore.py (a Korean panel),
+  yt-script/hooks.json (match_ko patterns), yt-package/title.py (display width, Korean tokens),
+  yt-edit/deadair.py (Korean fillers and restarts), yt-chapters/chapters.py (Korean topic words,
+  stable ordering of tied words) and yt-viral/swipe.py (Korean titles); files are opened as UTF-8;
+  a repository-local yt-script/voice.md; a "This account" section at the end of each SKILL.md.
+
 Fonts (not stored in this repository; loaded from Google Fonts at render time)
   Hahmlet, Noto Sans KR, Noto Serif KR, Black Han Sans, IBM Plex Mono, Anton: SIL Open Font License 1.1
   Yellowtail: Apache License 2.0
