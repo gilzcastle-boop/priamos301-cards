@@ -17,6 +17,18 @@ yt-script, yt-seo, yt-shorts, yt-viral
   stable ordering of tied words) and yt-viral/swipe.py (Korean titles); files are opened as UTF-8;
   a repository-local yt-script/voice.md; a "This account" section at the end of each SKILL.md.
 
+.claude/skills/watch
+  Source: https://github.com/bradautomates/claude-video (v0.3.2, commit 03ceb42, 2026-09-25)
+  Copyright (c) 2026 Bradley Bonanno, MIT License (full text: claude-video-LICENSE)
+  Only skills/watch was taken; the plugin manifest and its session-start hook were not.
+  scripts/frames.py, transcribe.py and runtime.py are unchanged. Modified for this account:
+  removed the Gemini engine (gemini.py), Groq/OpenAI transcription (whisper.py), the local
+  WhisperX adapter and its installer (local_whisperx.py), and build-skill.sh; watch.py is
+  local-only with no engine, question, whisper or cookie options; download.py runs yt-dlp with
+  --ignore-config --no-cookies --no-cookies-from-browser and has no cookie parameters; config.py
+  reads two environment variables and no file or key; setup.py only reports and installs
+  nothing; SKILL.md rewritten without the allowed-tools grant, with a "This account" section.
+
 Fonts (not stored in this repository; loaded from Google Fonts at render time)
   Hahmlet, Noto Sans KR, Noto Serif KR, Black Han Sans, IBM Plex Mono, Anton: SIL Open Font License 1.1
   Yellowtail: Apache License 2.0
