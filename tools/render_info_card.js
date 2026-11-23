@@ -92,6 +92,7 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
     const head = document.getElementById('head'), facts = document.getElementById('facts');
     let hs = 78;
     while (hs > 44 && [...head.children].some(l => l.scrollWidth > head.clientWidth)) head.style.fontSize = (hs -= 2) + 'px';
+    const headOver = Math.max(0, ...[...head.children].map(l => l.scrollWidth - head.clientWidth));
     const bottom = 1350 - 158 - 18;
     let fs = 30;
     for (;;) {
@@ -100,9 +101,10 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
       if (facts.offsetTop + facts.offsetHeight <= bottom || fs <= 22) break;
       fs -= 1;
     }
-    return { headline: hs, facts: fs, overflow: facts.offsetTop + facts.offsetHeight - bottom };
+    return { headline: hs, headOver, facts: fs, overflow: facts.offsetTop + facts.offsetHeight - bottom };
   });
-  if (fit.overflow > 0) console.error(`facts overflow by ${fit.overflow}px at ${fit.facts}px - shorten them`);
+  if (fit.overflow > 0) { console.error(`facts overflow by ${fit.overflow}px at ${fit.facts}px - shorten them`); process.exitCode = 2; }
+  if (fit.headOver > 0) { console.error(`headline OVERFLOW ${fit.headOver}px at ${fit.headline}px - shorten it`); process.exitCode = 2; }
   console.log(`headline ${fit.headline}px, facts ${fit.facts}px`);
   await p.locator('#card').screenshot({ path: out, type: 'jpeg', quality: 92 });
   await b.close();

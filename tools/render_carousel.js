@@ -169,7 +169,9 @@ const MASCOT_END = '프리·아모가 매일 5번 전해요!';
     const head = document.querySelector('.head');
     let hs = 84;
     while (hs > 48 && [...head.children].some(l => l.scrollWidth > head.clientWidth)) head.style.fontSize = (hs -= 2) + 'px';
-    report.push(`cover ${hs}px`);
+    // At the smallest size a line can still be wider than the box; say so instead of rendering it clipped.
+    const headOver = Math.max(0, ...[...head.children].map(l => l.scrollWidth - head.clientWidth));
+    report.push(`cover ${hs}px${headOver > 0 ? ` OVERFLOW ${headOver}px` : ''}`);
     const bottom = 1350 - 158 - 70;
     document.querySelectorAll('.slide').forEach((s, i) => {
       const t = s.querySelector('.ptitle'), body = s.querySelector('.pbody');
@@ -187,7 +189,7 @@ const MASCOT_END = '프리·아모가 매일 5번 전해요!';
     return report;
   });
   console.log(fit.join(', '));
-  if (fit.some(r => r.includes('OVERFLOW'))) console.error('point text overflow - shorten it');
+  if (fit.some(r => r.includes('OVERFLOW'))) { console.error('text overflow (cover headline or point text) - shorten it'); process.exitCode = 2; }
   const slides = await p.locator('.slide').all();
   for (let i = 0; i < slides.length; i++) {
     const name = i === slides.length - 1 ? `${prefix}-end.jpg` : `${prefix}-c${i + 1}.jpg`;
